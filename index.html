@@ -110,61 +110,46 @@
         }
 
         /* ==========================================
-           見開きコンテンツオーバーレイ＆閉じるボタン
+           見開きコンテンツオーバーレイ＆閉じるボタン (透過化)
            ========================================== */
         #content-overlay {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 90%;
-            max-width: 800px;
-            height: 80vh;
-            max-height: 520px;
-            aspect-ratio: 4.4 / 3.2;
-            background-color: #faf6ee; /* 優しいアンティーク紙の色 */
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
-            border-radius: 4px;
+            width: 76%;
+            max-width: 660px;
+            height: auto;
+            aspect-ratio: 4.4 / 3.2; /* 3D本の見開き比率に固定 */
+            background: transparent; /* 背景を完全透過にして、後ろの3D本モデルのページと融合させる */
+            box-shadow: none;
+            border: none;
             z-index: 8;
             display: flex;
             opacity: 0;
             pointer-events: none;
             color: #2b261f; /* 紙のインク風のダークブラウン */
             overflow: hidden;
-            border: 1px solid rgba(0,0,0,0.1);
-        }
-
-        /* 本の背表紙の折り目の陰影 */
-        #content-overlay::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 50px;
-            height: 100%;
-            background: linear-gradient(to right, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.0) 25%, rgba(0, 0, 0, 0.0) 75%, rgba(0, 0, 0, 0.18));
-            pointer-events: none;
         }
 
         .page-side {
             width: 50%;
             height: 100%;
-            padding: 40px 30px 40px 45px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
+            /* 3D本のページ余白に合わせるための設定 */
+            padding: 30px 20px 30px 45px;
         }
 
         .left-side {
             padding-right: 45px;
-            padding-left: 30px;
-            border-right: 1px solid rgba(0,0,0,0.05);
+            padding-left: 20px;
         }
 
         .right-side {
             padding-left: 45px;
-            padding-right: 30px;
+            padding-right: 20px;
         }
 
         /* アンティーク調閉じるボタン */
@@ -240,35 +225,93 @@
                 padding: 8px 16px;
             }
 
+            /* スマホでも3D本は横長見開きの姿勢のままなので、HTML側も横長2カラム比率を維持する */
             #content-overlay {
-                flex-direction: column;
-                max-height: 90%;
-                aspect-ratio: auto;
-            }
-
-            #content-overlay::after {
-                width: 100%;
-                height: 30px;
-                top: 50%;
-                left: 0;
-                transform: translateY(-50%);
-                background: linear-gradient(to bottom, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.0) 25%, rgba(0, 0, 0, 0.0) 75%, rgba(0, 0, 0, 0.15));
+                width: 90%;
+                max-width: none;
+                height: auto;
+                aspect-ratio: 4.4 / 3.2;
             }
 
             .page-side {
-                width: 100%;
-                height: 50%;
-                padding: 24px;
+                padding: 15px 8px 15px 22px;
             }
 
             .left-side {
-                border-right: none;
-                border-bottom: 1px solid rgba(0,0,0,0.05);
-                padding-bottom: 30px;
+                padding-right: 22px;
+                padding-left: 8px;
             }
 
             .right-side {
-                padding-top: 30px;
+                padding-left: 22px;
+                padding-right: 8px;
+            }
+
+            /* モバイルスモール画面内で文字や入力要素がはみ出さないように縮小調整 */
+            #content-overlay h2 {
+                font-size: 1.05rem !important;
+                margin-bottom: 8px !important;
+            }
+            #content-overlay p {
+                font-size: 0.65rem !important;
+                line-height: 1.4 !important;
+                margin-bottom: 8px !important;
+            }
+            #content-overlay label {
+                font-size: 0.6rem !important;
+                margin-bottom: 2px !important;
+            }
+            #content-overlay input, #content-overlay select, #content-overlay textarea, #content-overlay button {
+                padding: 4px !important;
+                font-size: 0.65rem !important;
+            }
+            #content-overlay form {
+                gap: 6px !important;
+            }
+            #content-overlay a {
+                padding: 6px 10px !important;
+                gap: 6px !important;
+            }
+            #content-overlay a svg {
+                width: 16px !important;
+                height: 16px !important;
+            }
+            #content-overlay a div div {
+                font-size: 0.65rem !important;
+            }
+            #content-overlay a div div:last-child {
+                font-size: 0.55rem !important;
+            }
+            
+            /* パートナー企業ロゴ */
+            #content-overlay .partner-grid {
+                gap: 8px !important;
+            }
+            #content-overlay .partner-logo-box {
+                padding: 8px !important;
+                gap: 4px !important;
+            }
+            #content-overlay .partner-logo-box svg {
+                width: 20px !important;
+                height: 20px !important;
+            }
+            #content-overlay .partner-logo-box span {
+                font-size: 0.55rem !important;
+            }
+            
+            /* コメント掲示板 */
+            #comment-list-container {
+                max-height: 120px !important;
+                gap: 6px !important;
+            }
+            #comment-list-container div {
+                padding: 6px 10px !important;
+            }
+            #comment-list-container div div span {
+                font-size: 0.6rem !important;
+            }
+            #comment-list-container div p {
+                font-size: 0.6rem !important;
             }
 
             #close-button {
@@ -503,16 +546,16 @@
                     const cleanText = text.replace(/\n|\\n/g, " ").toUpperCase();
                     const chars = cleanText.split("");
 
-                    // 文字数に応じてフォントサイズと行間を動的に最適化
-                    let fontSize = 48;
-                    let lineHeight = 56;
+                    // 【背表紙テキストの大型化】: 76pxに大幅スケールアップして視認性を強化
+                    let fontSize = 76;
+                    let lineHeight = 86;
                     if (chars.length > 8) {
-                        fontSize = 38;
-                        lineHeight = 44;
+                        fontSize = 56;
+                        lineHeight = 64;
                     }
                     if (chars.length > 12) {
-                        fontSize = 28;
-                        lineHeight = 32;
+                        fontSize = 40;
+                        lineHeight = 46;
                     }
 
                     colorCtx.font = `bold ${fontSize}px Georgia, serif`;
@@ -536,12 +579,12 @@
                         colorCtx.shadowOffsetX = 3;
                         colorCtx.shadowOffsetY = 3;
 
-                        // 2. 黒の縁取り (アウトライン)
+                        // 2. 黒の縁取り (大型フォントに合わせ線幅10に強化)
                         colorCtx.strokeStyle = '#000000';
-                        colorCtx.lineWidth = 8;
+                        colorCtx.lineWidth = 10;
                         colorCtx.strokeText(char, width / 2, yPos);
 
-                        // 3. ゴールド塗りつぶし
+                        // 3. ゴールドで文字を塗りつぶし
                         colorCtx.shadowColor = 'transparent';
                         colorCtx.fillStyle = goldGrad;
                         colorCtx.fillText(char, width / 2, yPos);
@@ -1129,7 +1172,6 @@
                 }
 
                 if (shelfBooks.includes(clickedObject)) {
-                    // タップ操作: 1回目で引き出し(grow)、同じ本を2回目で決定(open)
                     if (activeBook === clickedObject) {
                         triggerBookTransition(clickedObject);
                     } else {
@@ -1148,7 +1190,7 @@
             }
         }
 
-        // クリック／タップ決定後のシーン遷移演出
+        // クリック／タップ決定後のシーン遷移演出 (本の表示位置・サイズとHTMLの位置を同期)
         function triggerBookTransition(targetBook) {
             isTransitioning = true;
             document.body.style.cursor = 'default';
@@ -1180,13 +1222,14 @@
                 }
             });
 
+            // HTMLオーバーレイと完全に重なるよう、カメラと本のZ座標パラメータを微調整
             const aspect = window.innerWidth / window.innerHeight;
             const targetZ = aspect < 1.0 ? 1.4 : 2.2;
-            const cameraTargetZ = aspect < 1.0 ? 5.0 : 4.0;
+            const cameraTargetZ = aspect < 1.0 ? 3.9 : 3.8; // 見かけの距離 (PC 1.6, スマホ 2.5) で同期
 
             const clickTl = gsap.timeline({
                 onComplete: () => {
-                    // アニメーション完了後、見開きコンテンツをHTMLに挿入してフェードイン
+                    // アニメーション完了後、見開きコンテンツを表示
                     setupBookContent(targetBook.userData.url);
                     
                     gsap.to(["#content-overlay", "#close-button"], {
@@ -1339,10 +1382,9 @@
         // 見開きコンテンツの生成ヘルパー
         // ==========================================
 
-        // パートナーのテックロゴ (SVG)
         function createPartnerLogoSVG(name, color) {
             return `
-                <div style="background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.05); border-radius: 6px; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.02); transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.06)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 10px rgba(0,0,0,0.02)'">
+                <div class="partner-logo-box" style="background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.05); border-radius: 6px; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.02); transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.06)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 10px rgba(0,0,0,0.02)'">
                     <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <rect width="40" height="40" rx="8" fill="${color}" fill-opacity="0.1"/>
                         <circle cx="20" cy="20" r="10" stroke="${color}" stroke-width="3"/>
@@ -1353,7 +1395,6 @@
             `;
         }
 
-        // SNSリンクカード (SVGアイコン入り)
         function createSNSLinkCard(platform, handle, url, brandColor) {
             let svgIcon = "";
             if (platform.includes("Instagram")) {
@@ -1379,7 +1420,6 @@
             `;
         }
 
-        // コメントアイテム
         function createCommentItem(name, msg, time) {
             return `
                 <div style="background: rgba(255,255,255,0.65); border: 1px solid rgba(20,45,31,0.05); padding: 12px 16px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.01);">
@@ -1392,7 +1432,6 @@
             `;
         }
 
-        // コメント掲示板追加処理
         function handleAddComment() {
             const nameInput = document.getElementById('comment-name-input');
             const textInput = document.getElementById('comment-text-input');
@@ -1409,10 +1448,10 @@
             textInput.value = '';
         }
 
-        // 見開きコンテンツの生成
+        // 見開きコンテンツの生成 (透過化に伴いロゴグリッド等にクラス名を適用)
         function setupBookContent(url) {
             const overlay = document.getElementById('content-overlay');
-            overlay.innerHTML = ''; // クリア
+            overlay.innerHTML = ''; 
 
             const leftSide = document.createElement('div');
             leftSide.className = 'page-side left-side';
@@ -1431,7 +1470,7 @@
                 `;
 
                 rightSide.innerHTML = `
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; height: 100%; align-content: center;">
+                    <div class="partner-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; height: 100%; align-content: center;">
                         ${createPartnerLogoSVG("Alpha Tech", "#112233")}
                         ${createPartnerLogoSVG("Nexus Lab", "#4a121a")}
                         ${createPartnerLogoSVG("Vivid Design", "#4f3613")}
@@ -1547,8 +1586,6 @@
 
         window.addEventListener('resize', onWindowResize);
         window.addEventListener('mousemove', onMouseMove);
-        
-        // mousedownとtouchstartの二重検知を防ぐため、統一されたpointerdownイベントを使用
         window.addEventListener('pointerdown', handlePointerDown);
 
         window.onload = init;
