@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Book Portfolio</title>
+    <style>
+        /* 基本スタイルのリセット */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0d0c0b; /* 重厚感のある黒に近いダークブラウン */
+            font-family: 'Georgia', 'Times New Roman', 'Hiragino Mincho ProN', serif;
+            color: #f3ece0;
+        }
+
+        /* Three.jsの描画エリア */
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* 画面切り替え時のホワイトアウト・ブラックアウト用のオーバーレイ */
+        #fade-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* UIやテキストを重ねるためのオーバーレイ */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 40px;
+            opacity: 0; /* 本棚表示時にフェードイン */
+            transition: opacity 1.5s ease;
+        }
+
+        .header {
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            letter-spacing: 0.3em;
+            color: #d4af37; /* ゴールド */
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+            font-weight: 300;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            letter-spacing: 0.15em;
+            color: #a89f91;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #70685c;
+            letter-spacing: 0.1em;
+        }
+
+        /* 操作のヒント表示 */
+        .instruction-tip {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(13, 12, 11, 0.8);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            letter-spacing: 0.1em;
+            color: #d4af37;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0;
+            transition: opacity 1s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        /* ローディングインジケータ */
+        #loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            letter-spacing: 0.2em;
+            color: #d4af37;
+            z-index: 20;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+    </style>
+    <!-- Three.js (r128) と GSAP (アニメーションライブラリ) をCDNから読み込む -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body>
+
+    <div id="loader">LOADING...</div>
+    <div id="canvas-container"></div>
+    <div id="fade-overlay"></div>
+
+    <!-- 本棚シーン用のUI表示 -->
+    <div id="ui-overlay">
+        <header class="header">
+            <h1>ARCHIVE</h1>
+            <p>Select a book to explore</p>
+        </header>
+        <footer class="footer">
+            <p>© 2026 Antique Portfolio. All Rights Reserved.</p>
+        </footer>
+    </div>
+
+    <!-- 操作ガイダンス -->
+    <div id="instruction-tip" class="instruction-tip">本の背表紙を選択してください</div>
+
+    <script>
+        // ==========================================
+        // 定数 & 基本設定
+        // ==========================================
+        const BOOK_WIDTH = 2.2;
+        const BOOK_HEIGHT = 3.2;
+        const BOOK_THICKNESS = 0.5;
+        const COVER_T = 0.08; // 表紙の厚み
+
+        // 本の情報定義（タイトル、カバーのベース色、遷移先URL）
+        const BOOKS_DATA = [
+            { title: "Profile", color: "#4a121a", url: "#profile" },   // バーガンディレッド
+            { title: "Works", color: "#112233", url: "#works" },       // ロイヤルネイビー
+            { title: "Blog", color: "#142d1f", url: "#blog" },         // フォレストグリーン
+            { title: "Contact", color: "#4f3613", url: "#contact" }    // アンバーゴールド
+        ];
+
+        // グローバル変数
+        let scene, camera, renderer;
+        let openingBookGroup; // オープニング用の本
+        let bookshelfGroup;   // 本棚と本を入れるグループ
+        let shelfBooks = [];  // 本棚に並ぶ本たちのメッシュ参照用
+        let activeBook = null;// 現在ホバー/操作中の本
+        let isTransitioning = false; // シーン遷移中フラグ
+        let currentScene = 'opening'; // 'opening' or 'bookshelf'
+
+        // レイキャスター（マウスとの衝突判定用）
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        // ライティング参照用
+        let spotLight, ambientLight, shelfPointLight;
+
+        // ==========================================
+        // 動的テクスチャ生成 (HTML Canvasを使用)
+        // ==========================================
+
+        // 革の質感を生成するヘルパー関数
+        function drawLeatherGrain(ctx, width, height, baseColorHex) {
+            ctx.fillStyle = baseColorHex;
+            ctx.fillRect(0, 0, width, height);
+
+            // 1. 微小なノイズを描画（革の細かな凹凸表現）
+            const imgData = ctx.getImageData(0, 0, width, height);
+            const data = imgData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const noise = (Math.random() - 0.5) * 16; // ノイズ強度
+                data[i] = Math.min(255, Math.max(0, data[i] + noise));
+                data[i+1] = Math.min(255, Math.max(0, data[i+1] + noise * 0.8));
+                data[i+2] = Math.min(255, Math.max(0, data[i+2] + noise * 0.6));
+            }
+            ctx.putImageData(imgData, 0, 0);
+
+            // 2. 大きめのムラを描画（アンティーク調のエイジング表現）
+            const grad = ctx.createRadialGradient(width/2, height/2, Math.min(width, height)/4, width/2, height/2, Math.max(width, height)/1.2);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 0.05)');
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        // 金箔の装飾を描画する（カラーマップ用とメタルネス・ラフネスマスク用の両方に同時に描く）
+        function drawGoldFoilDual(colorCtx, maskCtx, width, height, text = "", isSpine = false) {
+            // ゴールドのグラデーションを作成
+            const goldGrad = colorCtx.createLinearGradient(0, 0, width, height);
+            goldGrad.addColorStop(0, '#d4af37');  // メタリックゴールド
+            goldGrad.addColorStop(0.3, '#f9e8a2'); // 明るいゴールド
+            goldGrad.addColorStop(0.5, '#aa7c11'); // 暗いブロンズゴールド
+            goldGrad.addColorStop(0.8, '#fbf5b7'); // 反射光
+            goldGrad.addColorStop(1, '#8c620d');  // 影
+
+            // 線の設定
+            colorCtx.strokeStyle = goldGrad;
+            maskCtx.strokeStyle = '#ffffff'; // マスクは白
+
+            if (!isSpine) {
+                // --- 表紙・裏表紙の装飾デザイン ---
+                const offset = 24;
+
+                // 外枠
+                colorCtx.lineWidth = 5;
+                maskCtx.lineWidth = 5;
+                colorCtx.strokeRect(offset, offset, width - offset*2, height - offset*2);
+                maskCtx.strokeRect(offset, offset, width - offset*2, height - offset*2);
+
+                // 内枠（細線）
+                colorCtx.lineWidth = 1.5;
+                maskCtx.lineWidth = 1.5;
+                colorCtx.strokeRect(offset + 8, offset + 8, width - (offset + 8)*2, height - (offset + 8)*2);
+                maskCtx.strokeRect(offset + 8, offset + 8, width - (offset + 8)*2, height - (offset + 8)*2);
+
+                // 四隅のコーナー装飾 (L字装飾)
+                const drawCorner = (x, y, xDir, yDir) => {
+                    const size = 20;
+                    colorCtx.beginPath();
+                    maskCtx.beginPath();
+
+                    colorCtx.moveTo(x, y + size * yDir);
+                    colorCtx.lineTo(x, y);
+                    colorCtx.lineTo(x + size * xDir, y);
+
+                    maskCtx.moveTo(x, y + size * yDir);
+                    maskCtx.lineTo(x, y);
+                    maskCtx.lineTo(x + size * xDir, y);
+
+                    colorCtx.stroke();
+                    maskCtx.stroke();
+                };
+                
+                const cOff = offset + 12;
+                drawCorner(cOff, cOff, 1, 1); // 左上
+                drawCorner(width - cOff, cOff, -1, 1); // 右上
+                drawCorner(cOff, height - cOff, 1, -1); // 左下
+                drawCorner(width - cOff, height - cOff, -1, -1); // 右下
+
+                // タイトルテキストの描画
+                if (text) {
+                    colorCtx.fillStyle = goldGrad;
+                    maskCtx.fillStyle = '#ffffff';
+                    
+                    colorCtx.textAlign = 'center';
+                    colorCtx.textBaseline = 'middle';
+                    maskCtx.textAlign = 'center';
+                    maskCtx.textBaseline = 'middle';
+
+                    colorCtx.font = 'bold 36px Georgia, serif';
+                    maskCtx.font = 'bold 36px Georgia, serif';
+
+                    colorCtx.fillText(text.toUpperCase(), width / 2, height / 2);
+                    maskCtx.fillText(text.toUpperCase(), width / 2, height / 2);
+                }
+            } else {
+                // --- 背表紙の装飾デザイン ---
+                // 上下の金色の帯
+                colorCtx.fillStyle = goldGrad;
+                maskCtx.fillStyle = '#ffffff';
+
+                const bandH = 8;
+                colorCtx.fillRect(10, 30, width - 20, bandH);
+                maskCtx.fillRect(10, 30, width - 20, bandH);
+                colorCtx.fillRect(10, height - 38, width - 20, bandH);
+                maskCtx.fillRect(10, height - 38, width - 20, bandH);
+
+                // 中間の細線装飾
+                colorCtx.lineWidth = 2;
+                maskCtx.lineWidth = 2;
+                colorCtx.strokeRect(15, 45, width - 30, height - 90);
+                maskCtx.strokeRect(15, 45, width - 30, height - 90);
+
+                // 背表紙の文字（縦書き、90度回転）
+                if (text) {
+                    colorCtx.save();
+                    maskCtx.save();
+
+                    colorCtx.translate(width / 2, height / 2);
+                    colorCtx.rotate(Math.PI / 2); // 90度回転して縦長に
+                    maskCtx.translate(width / 2, height / 2);
+                    maskCtx.rotate(Math.PI / 2);
+
+                    colorCtx.textAlign = 'center';
+                    colorCtx.textBaseline = 'middle';
+                    maskCtx.textAlign = 'center';
+                    maskCtx.textBaseline = 'middle';
+
+                    colorCtx.font = 'bold 24px Georgia, serif';
+                    maskCtx.font = 'bold 24px Georgia, serif';
+
+                    // 文字の文字間を少し空けるために、少し細工
+                    const spacedText = text.toUpperCase().split("").join(" ");
+                    colorCtx.fillText(spacedText, 0, 0);
+                    maskCtx.fillText(spacedText, 0, 0);
+
+                    colorCtx.restore();
+                    maskCtx.restore();
+                }
+            }
+        }
+
+        // 革のマテリアルと金箔マテリアルを一体化したCanvasTextureセットを生成
+        function createBookMaterialMaps(title, baseColorHex, isSpine = false) {
+            // テクスチャのサイズ定義
+            const w = isSpine ? 128 : 256;
+            const h = 512;
+
+            // 1. カラー（アルベド）マップ用Canvas
+            const colorCanvas = document.createElement('canvas');
+            colorCanvas.width = w;
+            colorCanvas.height = h;
+            const colorCtx = colorCanvas.getContext('2d');
+
+            // 2. 金箔の領域を指し示すマスク用Canvas
+            const maskCanvas = document.createElement('canvas');
+            maskCanvas.width = w;
+            maskCanvas.height = h;
+            const maskCtx = maskCanvas.getContext('2d');
+
+            // 背景は黒 (金箔なし = メタルネス0)
+            maskCtx.fillStyle = '#000000';
+            maskCtx.fillRect(0, 0, w, h);
+
+            // 革の質感をカラーに描画
+            drawLeatherGrain(colorCtx, w, h, baseColorHex);
+
+            // 金箔装飾を描画 (カラーには金色、マスクには白色で同時に描く)
+            drawGoldFoilDual(colorCtx, maskCtx, w, h, title, isSpine);
+
+            // 3. ラフネス（粗さ）マップ用Canvasの作成
+            // 金箔の部分はツルツル（黒に近い値 0.15）、革の部分はザラザラ（明るい灰色 0.85）
+            const roughnessCanvas = document.createElement('canvas');
+            roughnessCanvas.width = w;
+            roughnessCanvas.height = h;
+            const roughnessCtx = roughnessCanvas.getContext('2d');
+
+            // 初期値として革の粗さ（0.85に相当する灰色）で塗りつぶす
+            roughnessCtx.fillStyle = 'rgb(217, 217, 217)';
+            roughnessCtx.fillRect(0, 0, w, h);
+
+            // マスク画像から金箔部分（白色）を抽出し、ラフネス値を下げる
+            const maskData = maskCtx.getImageData(0, 0, w, h).data;
+            const roughImgData = roughnessCtx.getImageData(0, 0, w, h);
+            const roughData = roughImgData.data;
+
+            for (let i = 0; i < maskData.length; i += 4) {
+                if (maskData[i] > 128) { // 白い領域（金箔）
+                    roughData[i] = 38;   // 38/255 = 約0.15の粗さ
+                    roughData[i+1] = 38;
+                    roughData[i+2] = 38;
+                }
+            }
+            roughnessCtx.putImageData(roughImgData, 0, 0);
+
+            // Three.jsテクスチャに変換
+            const map = new THREE.CanvasTexture(colorCanvas);
+            const metalnessMap = new THREE.CanvasTexture(maskCanvas);
+            const roughnessMap = new THREE.CanvasTexture(roughnessCanvas);
+
+            // テクスチャのチラつきを防ぐ設定
+            map.minFilter = THREE.LinearMipmapLinearFilter;
+            metalnessMap.minFilter = THREE.LinearMipmapLinearFilter;
+            roughnessMap.minFilter = THREE.LinearMipmapLinearFilter;
+
+            return { map, metalnessMap, roughnessMap };
+        }
+
+        // ==========================================
+        // 3D 本モデル（メッシュ）の構築
+        // ==========================================
+
+        function createBook(title, colorHex, isOpening = false) {
+            const bookGroup = new THREE.Group();
+
+            // 1. 各パーツのマテリアル準備
+            const spineMaps = createBookMaterialMaps(title, colorHex, true);
+            const coverMaps = createBookMaterialMaps(title, colorHex, false);
+
+            const spineMat = new THREE.MeshStandardMaterial({
+                map: spineMaps.map,
+                metalnessMap: spineMaps.metalnessMap,
+                roughnessMap: spineMaps.roughnessMap,
+                metalness: 1.0,
+                roughness: 1.0,
+                bumpMap: spineMaps.map, // 微小なシワをバンプに流用
+                bumpScale: 0.005
+            });
+
+            const coverMat = new THREE.MeshStandardMaterial({
+                map: coverMaps.map,
+                metalnessMap: coverMaps.metalnessMap,
+                roughnessMap: coverMaps.roughnessMap,
+                metalness: 1.0,
+                roughness: 1.0,
+                bumpMap: coverMaps.map,
+                bumpScale: 0.005
+            });
+
+            // 見返し用紙（表紙を開いたときの裏面）のマテリアル
+            const endpaperMat = new THREE.MeshStandardMaterial({
+                color: '#e6dfd3', // 優しいアイボリー色
+                roughness: 0.9,
+                metalness: 0.0
+            });
+
+            // ページの小口用のストライプテクスチャ（簡易紙の束表現）
+            const pageCanvas = document.createElement('canvas');
+            pageCanvas.width = 64;
+            pageCanvas.height = 128;
+            const pCtx = pageCanvas.getContext('2d');
+            pCtx.fillStyle = '#faf6ed';
+            pCtx.fillRect(0, 0, 64, 128);
+            pCtx.fillStyle = '#e3dac9';
+            for (let y = 0; y < 128; y += 4) {
+                pCtx.fillRect(0, y, 64, 2);
+            }
+            const pageTex = new THREE.CanvasTexture(pageCanvas);
+            pageTex.wrapS = THREE.RepeatWrapping;
+            pageTex.wrapT = THREE.RepeatWrapping;
+            pageTex.repeat.set(1, 10);
+
+            const pageMat = new THREE.MeshStandardMaterial({
+                map: pageTex,
+                roughness: 0.8,
+                metalness: 0.0
+            });
+
+            // --- メッシュの配置 ---
+
+            // A. 背表紙 (Spine)
+            const spineGeom = new THREE.BoxGeometry(BOOK_THICKNESS, BOOK_HEIGHT, 0.08);
+            const spineMesh = new THREE.Mesh(spineGeom, spineMat);
+            spineMesh.position.set(-BOOK_WIDTH/2, 0, 0);
+            spineMesh.rotation.y = -Math.PI / 2; // 左側面を向く
+            spineMesh.castShadow = true;
+            spineMesh.receiveShadow = true;
+            bookGroup.add(spineMesh);
+
+            // B. 裏表紙 (Back Cover)
+            const backCoverGeom = new THREE.BoxGeometry(BOOK_WIDTH, BOOK_HEIGHT, COVER_T);
+            const backCoverMaterials = [
+                spineMat,      // 右面（革）
+                spineMat,      // 左面（革）
+                spineMat,      // 上面（革）
+                spineMat,      // 下面（革）
+                endpaperMat,   // 内面（見返し）
+                coverMat       // 外面（裏表紙表）
+            ];
+            const backCoverMesh = new THREE.Mesh(backCoverGeom, backCoverMaterials);
+            backCoverMesh.position.set(0, 0, -BOOK_THICKNESS/2 + COVER_T/2);
+            backCoverMesh.castShadow = true;
+            backCoverMesh.receiveShadow = true;
+            bookGroup.add(backCoverMesh);
+
+            // C. ページの束 (Pages)
+            const pagesGeom = new THREE.BoxGeometry(BOOK_WIDTH - 0.1, BOOK_HEIGHT - 0.15, BOOK_THICKNESS - COVER_T * 2);
+            const pageMaterials = [
+                pageMat,      // 右側面（小口）
+                spineMat,      // 左側面（背と接する面）
+                pageMat,      // 上面
+                pageMat,      // 下面
+                pageMat,      // 前面
+                pageMat       // 背面
+            ];
+            const pagesMesh = new THREE.Mesh(pagesGeom, pageMaterials);
+            pagesMesh.position.set(-0.02, 0, 0);
+            pagesMesh.castShadow = true;
+            pagesMesh.receiveShadow = true;
+            bookGroup.add(pagesMesh);
+
+            // D. 表紙グループ (Front Cover Group) - ヒンジ(回転軸)制御用
+            const frontCoverHinge = new THREE.Group();
+            frontCoverHinge.position.set(-BOOK_WIDTH/2, 0, BOOK_THICKNESS/2 - COVER_T/2);
+
+            const frontCoverGeom = new THREE.BoxGeometry(BOOK_WIDTH, BOOK_HEIGHT, COVER_T);
+            const frontCoverMaterials = [
+                spineMat,      // 右面
+                spineMat,      // 左面
+                spineMat,      // 上面
+                spineMat,      // 下面
+                coverMat,      // 外面（表紙表）
+                endpaperMat    // 内面（見返し）
+            ];
+            const frontCoverMesh = new THREE.Mesh(frontCoverGeom, frontCoverMaterials);
+            frontCoverMesh.position.set(BOOK_WIDTH/2, 0, 0);
+            frontCoverMesh.castShadow = true;
+            frontCoverMesh.receiveShadow = true;
+            
+            frontCoverHinge.add(frontCoverMesh);
+            bookGroup.add(frontCoverHinge);
+
+            // 表紙アニメーション制御用の参照をuserDataに持たせる
+            bookGroup.userData = {
+                hinge: frontCoverHinge,
+                title: title,
+                url: BOOKS_DATA.find(b => b.title === title)?.url || "#"
+            };
+
+            return bookGroup;
+        }
+
+        // ==========================================
+        // 3D 本棚の構築
+        // ==========================================
+
+        function createBookshelf() {
+            const shelfGroup = new THREE.Group();
+
+            // 木目テクスチャの動的生成
+            const woodCanvas = document.createElement('canvas');
+            woodCanvas.width = 512;
+            woodCanvas.height = 512;
+            const wCtx = woodCanvas.getContext('2d');
+            
+            // ベースのダークブラウン
+            wCtx.fillStyle = '#2b1a09';
+            wCtx.fillRect(0, 0, 512, 512);
+
+            // 木目の縞模様
+            wCtx.fillStyle = '#1c0f05';
+            for (let i = 0; i < 50; i++) {
+                const y = Math.random() * 512;
+                const h = Math.random() * 8 + 2;
+                wCtx.fillRect(0, y, 512, h);
+            }
+            // ノイズぼかし
+            const woodGrad = wCtx.createLinearGradient(0, 0, 0, 512);
+            woodGrad.addColorStop(0, 'rgba(0, 0, 0, 0.2)');
+            woodGrad.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
+            wCtx.fillStyle = woodGrad;
+            wCtx.fillRect(0, 0, 512, 512);
+
+            const woodTex = new THREE.CanvasTexture(woodCanvas);
+            const woodMat = new THREE.MeshStandardMaterial({
+                map: woodTex,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+
+            // A. 下の棚板 (Bottom Shelf)
+            const shelfBottomGeom = new THREE.BoxGeometry(11.0, 0.25, 2.5);
+            const shelfBottom = new THREE.Mesh(shelfBottomGeom, woodMat);
+            shelfBottom.position.set(0, -2.0, 0);
+            shelfBottom.receiveShadow = true;
+            shelfBottom.castShadow = true;
+            shelfGroup.add(shelfBottom);
+
+            // B. 上の棚板 (Top Shelf)
+            const shelfTop = shelfBottom.clone();
+            shelfTop.position.set(0, 2.0, 0);
+            shelfGroup.add(shelfTop);
+
+            // C. 左側板 (Left Wall)
+            const wallGeom = new THREE.BoxGeometry(0.25, 4.0, 2.5);
+            const leftWall = new THREE.Mesh(wallGeom, woodMat);
+            leftWall.position.set(-5.5, 0, 0);
+            leftWall.receiveShadow = true;
+            leftWall.castShadow = true;
+            shelfGroup.add(leftWall);
+
+            // D. 右側板 (Right Wall)
+            const rightWall = leftWall.clone();
+            rightWall.position.set(5.5, 0, 0);
+            shelfGroup.add(rightWall);
+
+            // E. 背板 (Backboard)
+            const backboardGeom = new THREE.BoxGeometry(11.0, 4.0, 0.1);
+            const backboard = new THREE.Mesh(backboardGeom, woodMat);
+            backboard.position.set(0, 0, -1.25);
+            backboard.receiveShadow = true;
+            shelfGroup.add(backboard);
+
+            return shelfGroup;
+        }
+
+        // ==========================================
+        // シーン初期化 & セットアップ
+        // ==========================================
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+
+            // 1. シーン作成
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2('#0d0c0b', 0.08);
+
+            // 2. カメラ設定
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            
+            // 3. レンダラー設定 (影の有効化、アンチエイリアス処理)
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            container.appendChild(renderer.domElement);
+
+            // ==========================================
+            // ライティングのセットアップ
+            // ==========================================
+            
+            // 環境光：全体を柔らかく照らす
+            ambientLight = new THREE.AmbientLight('#2a1e15', 1.2);
+            scene.add(ambientLight);
+
+            // スポットライト：主光源
+            spotLight = new THREE.SpotLight('#ffeedd', 4.5);
+            spotLight.position.set(5, 8, 8);
+            spotLight.angle = Math.PI / 4;
+            spotLight.penumbra = 0.8;
+            spotLight.castShadow = true;
+            spotLight.shadow.mapSize.width = 2048;
+            spotLight.shadow.mapSize.height = 2048;
+            spotLight.shadow.bias = -0.001;
+            scene.add(spotLight);
+
+            // 補助光
+            const dirLight = new THREE.DirectionalLight('#443322', 1.0);
+            dirLight.position.set(-6, -2, 4);
+            scene.add(dirLight);
+
+            // ==========================================
+            // シーン構築
+            // ==========================================
+
+            // A. 【オープニングシーン】の本の生成と配置
+            openingBookGroup = createBook("Saga", "#261a15", true);
+            openingBookGroup.position.set(0, 0, 0);
+            openingBookGroup.rotation.set(0.1, -0.2, 0.05);
+            scene.add(openingBookGroup);
+
+            // オープニング本の内側に仕込む眩いポイントライト
+            shelfPointLight = new THREE.PointLight('#ffffff', 0, 15);
+            shelfPointLight.position.set(0, 0, 0.1);
+            openingBookGroup.add(shelfPointLight);
+
+            // カメラの初期位置
+            camera.position.set(0, 0.5, 6);
+            camera.lookAt(0, 0, 0);
+
+            // ローディング非表示
+            document.getElementById('loader').style.opacity = '0';
+
+            // アニメーションループ開始
+            animate();
+
+            // オープニングアニメーションを自動実行
+            startOpeningSequence();
+        }
+
+        // ==========================================
+        // アニメーションフロー
+        // ==========================================
+
+        // 1. オープニングアニメーション (GSAP)
+        function startOpeningSequence() {
+            const tl = gsap.timeline({
+                onComplete: () => {
+                    transitionToBookshelf();
+                }
+            });
+
+            // 本を手前に引き寄せる
+            tl.to(openingBookGroup.position, {
+                z: 2.2,
+                y: -0.15,
+                duration: 2.5,
+                ease: "power2.inOut"
+            });
+
+            // 角度を正面に向ける
+            tl.to(openingBookGroup.rotation, {
+                x: 0,
+                y: 0,
+                z: 0,
+                duration: 2.2,
+                ease: "power2.inOut"
+            }, "<");
+
+            // 表紙を開く
+            tl.to(openingBookGroup.userData.hinge.rotation, {
+                y: -Math.PI * 0.95,
+                duration: 2.0,
+                ease: "power2.inOut"
+            }, "-=1.0");
+
+            // ライトを発光させる
+            tl.to(shelfPointLight, {
+                intensity: 25.0,
+                distance: 8,
+                duration: 1.5,
+                ease: "power1.in"
+            }, "-=1.2");
+
+            // ホワイトアウト
+            tl.to("#fade-overlay", {
+                opacity: 1,
+                duration: 0.8,
+                ease: "power1.in"
+            }, "-=0.6");
+        }
+
+        // 2. 本棚へのシーン切り替え処理
+        function transitionToBookshelf() {
+            currentScene = 'bookshelf';
+
+            // オープニング要素を非表示
+            scene.remove(openingBookGroup);
+
+            // 本棚（3D）を生成し、シーンに追加
+            bookshelfGroup = createBookshelf();
+            bookshelfGroup.position.set(0, 0, 0);
+            scene.add(bookshelfGroup);
+
+            // 本棚に本を並べる
+            const totalBooks = BOOKS_DATA.length;
+            const startX = -1.8;
+            const spacing = 1.2;
+
+            BOOKS_DATA.forEach((data, index) => {
+                const book = createBook(data.title, data.color);
+                
+                // 背表紙が手前を向くように回転
+                book.rotation.set(0, Math.PI / 2, 0);
+                
+                // 配置座標計算
+                const xPos = startX + index * spacing;
+                book.position.set(xPos, -0.28, 0);
+
+                book.name = `book_${data.title.toLowerCase()}`;
+
+                bookshelfGroup.add(book);
+                shelfBooks.push(book);
+            });
+
+            // 本棚用のカメラアングルにセット
+            camera.position.set(0, 0.2, 5.5);
+            camera.lookAt(0, 0, 0);
+
+            // ライト再調整
+            spotLight.intensity = 3.5;
+            spotLight.position.set(0, 5, 6);
+            spotLight.target = bookshelfGroup;
+
+            // フェードアウト
+            gsap.to("#fade-overlay", {
+                opacity: 0,
+                duration: 1.5,
+                ease: "power2.out",
+                onComplete: () => {
+                    document.getElementById('ui-overlay').style.opacity = '1';
+                    document.getElementById('instruction-tip').style.opacity = '1';
+                }
+            });
+        }
+
+        // ==========================================
+        // インタラクション (ホバー & クリック)
+        // ==========================================
+
+        function onMouseMove(event) {
+            if (isTransitioning || currentScene !== 'bookshelf') return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(shelfBooks, true);
+
+            if (intersects.length > 0) {
+                let clickedObject = intersects[0].object;
+                while (clickedObject.parent && !shelfBooks.includes(clickedObject)) {
+                    clickedObject = clickedObject.parent;
+                }
+
+                if (shelfBooks.includes(clickedObject)) {
+                    if (activeBook !== clickedObject) {
+                        if (activeBook) shrinkBook(activeBook);
+
+                        activeBook = clickedObject;
+                        growBook(activeBook);
+                        document.body.style.cursor = 'pointer';
+                    }
+                }
+            } else {
+                if (activeBook) {
+                    shrinkBook(activeBook);
+                    activeBook = null;
+                    document.body.style.cursor = 'default';
+                }
+            }
+        }
+
+        function growBook(book) {
+            gsap.to(book.position, {
+                z: 0.5,
+                y: -0.1,
+                duration: 0.4,
+                ease: "power2.out"
+            });
+            gsap.to(book.rotation, {
+                x: 0.05,
+                z: -0.02,
+                duration: 0.4,
+                ease: "power2.out"
+            });
+        }
+
+        function shrinkBook(book) {
+            gsap.to(book.position, {
+                z: 0,
+                y: -0.28,
+                duration: 0.4,
+                ease: "power2.out"
+            });
+            gsap.to(book.rotation, {
+                x: 0,
+                z: 0,
+                duration: 0.4,
+                ease: "power2.out"
+            });
+        }
+
+        function onClick() {
+            if (isTransitioning || currentScene !== 'bookshelf' || !activeBook) return;
+
+            isTransitioning = true;
+            document.body.style.cursor = 'default';
+            
+            document.getElementById('ui-overlay').style.opacity = '0';
+            document.getElementById('instruction-tip').style.opacity = '0';
+
+            const targetBook = activeBook;
+
+            // 他の本を奥に退避
+            shelfBooks.forEach((book) => {
+                if (book !== targetBook) {
+                    gsap.to(book.position, {
+                        z: -1.0,
+                        y: -0.4,
+                        duration: 0.8,
+                        ease: "power2.inOut"
+                    });
+                    book.traverse((child) => {
+                        if (child.material) {
+                            gsap.to(child.material, {
+                                opacity: 0.1,
+                                transparent: true,
+                                duration: 0.8
+                            });
+                        }
+                    });
+                }
+            });
+
+            const clickTl = gsap.timeline({
+                onComplete: () => {
+                    console.log("Navigate to: ", targetBook.userData.url);
+                    window.location.hash = targetBook.userData.url;
+                    
+                    setTimeout(() => {
+                        alert(`「${targetBook.userData.title}」へ画面遷移します（遷移先ハッシュ: ${targetBook.userData.url}）`);
+                        location.reload(); 
+                    }, 500);
+                }
+            });
+
+            // 1. 本を画面中央手前に引き出す
+            clickTl.to(targetBook.position, {
+                x: 0,
+                y: 0,
+                z: 2.6,
+                duration: 1.2,
+                ease: "power3.inOut"
+            });
+
+            clickTl.to(targetBook.rotation, {
+                x: 0.1,
+                y: 0, // 表紙が正面を向く
+                z: 0,
+                duration: 1.2,
+                ease: "power3.inOut"
+            }, "<");
+
+            // 2. カメラを少し近づける
+            clickTl.to(camera.position, {
+                z: 4.5,
+                y: 0,
+                duration: 1.2,
+                ease: "power3.inOut"
+            }, "<");
+
+            // 3. 表紙を少しパカッと開く
+            clickTl.to(targetBook.userData.hinge.rotation, {
+                y: -Math.PI * 0.35,
+                duration: 0.8,
+                ease: "power2.out"
+            }, "-=0.2");
+
+            // 4. 光を漏らしつつ暗転
+            const bookGlow = new THREE.PointLight('#ffffff', 0, 10);
+            bookGlow.position.set(0, 0, 0.1);
+            targetBook.add(bookGlow);
+
+            clickTl.to(bookGlow, {
+                intensity: 8.0,
+                duration: 0.8
+            }, "-=0.6");
+
+            clickTl.to("#fade-overlay", {
+                backgroundColor: "#0d0c0b", // 暗転
+                opacity: 1,
+                duration: 0.8,
+                ease: "power1.in"
+            }, "-=0.4");
+        }
+
+        // ==========================================
+        // リサイズ・毎フレーム更新処理
+        // ==========================================
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+
+            if (currentScene === 'opening' && openingBookGroup && !isTransitioning) {
+                openingBookGroup.position.y = Math.sin(time * 0.001) * 0.05 - 0.05;
+                openingBookGroup.rotation.y = -0.2 + Math.sin(time * 0.0005) * 0.05;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.addEventListener('resize', onWindowResize);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('click', onClick);
+
+        window.onload = init;
+
+    </script>
+</body>
+</html>
