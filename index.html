@@ -522,16 +522,16 @@
 
                 // 上下の金色の帯
                 const bandH = 20;
-                colorCtx.fillRect(40, 80, width - 80, bandH);
-                maskCtx.fillRect(40, 80, width - 80, bandH);
-                colorCtx.fillRect(40, height - 100, width - 80, bandH);
-                maskCtx.fillRect(40, height - 100, width - 80, bandH);
+                colorCtx.fillRect(25, 80, width - 50, bandH);
+                maskCtx.fillRect(25, 80, width - 50, bandH);
+                colorCtx.fillRect(25, height - 100, width - 50, bandH);
+                maskCtx.fillRect(25, height - 100, width - 50, bandH);
 
                 // 中間の細線装飾
-                colorCtx.lineWidth = 4;
-                maskCtx.lineWidth = 4;
-                colorCtx.strokeRect(50, 120, width - 100, height - 240);
-                maskCtx.strokeRect(50, 120, width - 100, height - 240);
+                colorCtx.lineWidth = 3;
+                maskCtx.lineWidth = 3;
+                colorCtx.strokeRect(30, 120, width - 60, height - 240);
+                maskCtx.strokeRect(30, 120, width - 60, height - 240);
 
                 // 背表紙の文字（縦積み: 回転を廃止し、1文字ずつ直立のまま上から下へ並べる）
                 if (text) {
@@ -565,15 +565,15 @@
                     chars.forEach((char, i) => {
                         const yPos = startY + i * lineHeight;
 
-                        // 1. シャドウ (ドロップシャドウ)
-                        colorCtx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-                        colorCtx.shadowBlur = 10;
-                        colorCtx.shadowOffsetX = 3;
-                        colorCtx.shadowOffsetY = 3;
+                        // 1. シャドウ (ドロップシャドウ) - 160px幅に合わせて細かく調整
+                        colorCtx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+                        colorCtx.shadowBlur = 4;
+                        colorCtx.shadowOffsetX = 1.5;
+                        colorCtx.shadowOffsetY = 1.5;
 
-                        // 2. 黒の縁取り (大型フォントに合わせ線幅10に強化)
+                        // 2. 黒の縁取り - 160px幅に合わせて細く (線幅4) してフォント崩れを防ぐ
                         colorCtx.strokeStyle = '#000000';
-                        colorCtx.lineWidth = 10;
+                        colorCtx.lineWidth = 4;
                         colorCtx.strokeText(char, width / 2, yPos);
 
                         // 3. ゴールドで文字を塗りつぶし
@@ -588,9 +588,9 @@
             }
         }
 
-        // 革のマテリアルと金箔マテリアルを一体化したCanvasTextureセットを生成 (解像度4倍)
+        // 革のマテリアルと金箔マテリアルを一体化したCanvasTextureセットを生成
         function createBookMaterialMaps(title, baseColorHex, isSpine = false) {
-            const w = isSpine ? 512 : 1024;
+            const w = isSpine ? 160 : 704;
             const h = 1024;
 
             // 1. カラー用Canvas
