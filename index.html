@@ -209,7 +209,7 @@
         let spotLight, ambientLight, shelfPointLight;
 
         // ==========================================
-        // 動的テクスチャ生成 (HTML Canvasを使用) - 高解像度対応
+        // 動的テクスチャ生成 (HTML Canvasを使用) - 高解像度・改行対応
         // ==========================================
 
         // 革の質感を生成するヘルパー関数
@@ -290,7 +290,7 @@
                 drawCorner(cOff, height - cOff, 1, -1); // 左下
                 drawCorner(width - cOff, height - cOff, -1, -1); // 右下
 
-                // タイトルテキストの描画
+                // タイトルテキストの描画 (改行対応)
                 if (text) {
                     colorCtx.fillStyle = goldGrad;
                     maskCtx.fillStyle = '#ffffff';
@@ -300,11 +300,31 @@
                     maskCtx.textAlign = 'center';
                     maskCtx.textBaseline = 'middle';
 
-                    colorCtx.font = 'bold 88px Georgia, serif';
-                    maskCtx.font = 'bold 88px Georgia, serif';
+                    // 改行コード（\nまたは\\n）を検知して分割して描画する
+                    if (text.includes('\n') || text.includes('\\n')) {
+                        const lines = text.split(/\n|\\n/);
+                        // 複数行テキストはフォントサイズをやや小さめに自動調整
+                        const fontSize = 56;
+                        colorCtx.font = `bold ${fontSize}px Georgia, serif`;
+                        maskCtx.font = `bold ${fontSize}px Georgia, serif`;
 
-                    colorCtx.fillText(text.toUpperCase(), width / 2, height / 2);
-                    maskCtx.fillText(text.toUpperCase(), width / 2, height / 2);
+                        // 改行幅をフォントサイズに基づいて計算
+                        const lineH = fontSize * 1.35;
+                        const startY = (height / 2) - ((lines.length - 1) * lineH / 2);
+
+                        lines.forEach((line, i) => {
+                            colorCtx.fillText(line.toUpperCase(), width / 2, startY + i * lineH);
+                            maskCtx.fillText(line.toUpperCase(), width / 2, startY + i * lineH);
+                        });
+                    } else {
+                        // 1行
+                        const fontSize = 88;
+                        colorCtx.font = `bold ${fontSize}px Georgia, serif`;
+                        maskCtx.font = `bold ${fontSize}px Georgia, serif`;
+
+                        colorCtx.fillText(text.toUpperCase(), width / 2, height / 2);
+                        maskCtx.fillText(text.toUpperCase(), width / 2, height / 2);
+                    }
                 }
             } else {
                 // --- 背表紙の装飾デザイン ---
@@ -342,7 +362,9 @@
                     colorCtx.font = 'bold 48px Georgia, serif';
                     maskCtx.font = 'bold 48px Georgia, serif';
 
-                    const spacedText = text.toUpperCase().split("").join(" ");
+                    // 背表紙テキストの改行文字は半角スペースに置き換えて縦書き表示
+                    const cleanText = text.replace(/\n|\\n/g, " ");
+                    const spacedText = cleanText.toUpperCase().split("").join(" ");
                     colorCtx.fillText(spacedText, 0, 0);
                     maskCtx.fillText(spacedText, 0, 0);
 
@@ -375,7 +397,7 @@
             // 革の質感をカラーに描画
             drawLeatherGrain(colorCtx, w, h, baseColorHex);
 
-            // 金箔装飾を描画
+            // 金箔装飾を描画 (カラーには金色、マスクには白色で同時に描く)
             drawGoldFoilDual(colorCtx, maskCtx, w, h, title, isSpine);
 
             // 3. ラフネスマップ用Canvasの作成
@@ -545,7 +567,7 @@
         }
 
         // ==========================================
-        // 3D 本棚の構築（コンパクト化）
+        // 3D 本棚の構築
         // ==========================================
 
         function createBookshelf() {
@@ -578,7 +600,7 @@
                 metalness: 0.1
             });
 
-            // 本を隙間なく並べる配置幅に合わせ、本棚の横幅を「5.0」にコンパクト化
+            // 本を隙間なく並べる配置幅に合わせ、本棚の横幅を「5.0」に設定
             const shelfWidth = 5.0;
 
             // A. 下の棚板 (Bottom Shelf)
@@ -618,7 +640,7 @@
         }
 
         // ==========================================
-        // 画面比率（アスペクト比）に応じたカメラ調整
+        // 画面比率（アスペクト比）に応じたカメラ調整（少し引いたアングル）
         // ==========================================
         function adjustSceneForViewport() {
             const width = window.innerWidth;
@@ -633,12 +655,13 @@
             if (currentScene === 'bookshelf') {
                 if (aspect < 1.0) {
                     // スマートフォンなどの縦画面（Portrait）
-                    // ぎっしり並んだ本が完全に見えるよう、アスペクト比に基づきカメラZ位置を動的計算
-                    camera.position.z = 4.2 + (1.0 - aspect) * 2.0;
-                    camera.position.y = 0.5; // 少し見下ろす
+                    // 少し遠くからゆったり見るように、初期のZ距離を引き気味に再設定（5.2からスタート）
+                    camera.position.z = 5.2 + (1.0 - aspect) * 2.2;
+                    camera.position.y = 0.5;
                 } else {
                     // PCやタブレットなどの横画面（Landscape）
-                    camera.position.z = 3.5; // 近づけて迫力を出す
+                    // 従来 3.5 -> 少し引いた「4.5」に再調整し本棚全体のフレーミングを綺麗に見せる
+                    camera.position.z = 4.5;
                     camera.position.y = 0.25;
                 }
                 camera.lookAt(0, 0, 0);
@@ -701,7 +724,8 @@
             // ==========================================
 
             // A. 【オープニングシーン】の本の配置
-            openingBookGroup = createBook("Saga", "#261a15", true);
+            // タイトルを改行入りの「TEDxUTsukuba Salon\nLibrary」に変更
+            openingBookGroup = createBook("TEDxUTsukuba Salon\nLibrary", "#261a15", true);
             openingBookGroup.position.set(0, 0, 0);
             openingBookGroup.rotation.set(0.1, -0.2, 0.05);
             scene.add(openingBookGroup);
@@ -728,7 +752,7 @@
         // アニメーションフロー
         // ==========================================
 
-        // 1. オープニングアニメーション (GSAP)
+        // 1. オープニングアニメーション (GSAP) - ページに飛び込むカメラワーク
         function startOpeningSequence() {
             const aspect = window.innerWidth / window.innerHeight;
             const targetZ = aspect < 1.0 ? 1.4 : 2.2;
@@ -743,7 +767,7 @@
             tl.to(openingBookGroup.position, {
                 z: targetZ,
                 y: -0.15,
-                duration: 2.5,
+                duration: 2.2,
                 ease: "power2.inOut"
             });
 
@@ -752,31 +776,41 @@
                 x: 0,
                 y: 0,
                 z: 0,
-                duration: 2.2,
+                duration: 2.0,
                 ease: "power2.inOut"
             }, "<");
 
-            // 表紙を開く
+            // 表紙を大きく開き切る (見開き状態に回転)
             tl.to(openingBookGroup.userData.hinge.rotation, {
                 y: -Math.PI * 0.95,
-                duration: 2.0,
+                duration: 1.8,
                 ease: "power2.inOut"
-            }, "-=1.0");
+            }, "-=0.8");
 
-            // ライトを発光させる
+            // 【本のページに飛び込むようなカメラワーク】
+            // 表紙が開ききるのと連動して、カメラを一気に本の中身（ページ）の極限まで近づける
+            // 本のZ位置である targetZ + 0.12 (衝突直前の位置) まで高速ズーム
+            tl.to(camera.position, {
+                x: 0,
+                y: -0.15,
+                z: targetZ + 0.12,
+                duration: 1.2,
+                ease: "power2.in"
+            }, "-=0.8");
+
+            // カメラの飛び込みに合わせて、ライトを急激に発光させ、ホワイトアウトを完了させる
             tl.to(shelfPointLight, {
-                intensity: 25.0,
-                distance: 8,
-                duration: 1.5,
+                intensity: 35.0,
+                distance: 6,
+                duration: 1.0,
                 ease: "power1.in"
-            }, "-=1.2");
+            }, "-=0.8");
 
-            // ホワイトアウト
             tl.to("#fade-overlay", {
                 opacity: 1,
-                duration: 0.8,
+                duration: 0.6,
                 ease: "power1.in"
-            }, "-=0.6");
+            }, "-=0.5");
         }
 
         // 2. 本棚へのシーン切り替え処理
@@ -793,9 +827,7 @@
 
             // --- 隙間のない本の配置 ---
             const totalBooks = BOOKS_DATA.length;
-            // 本の厚み0.5に対して、Zファイティング防止のためのごくわずかな余白0.02を乗せた「0.52」を配置間隔に設定
             const spacing = 0.52; 
-            // 左右対称になるように開始X座標を動的計算
             const startX = - (totalBooks - 1) * spacing / 2; 
 
             BOOKS_DATA.forEach((data, index) => {
@@ -814,7 +846,7 @@
                 shelfBooks.push(book);
             });
 
-            // 本棚シーン用にカメラやオブジェクト配置を再調整
+            // 本棚シーン用にカメラやオブジェクト配置を再調整 (離れた位置に後退)
             adjustSceneForViewport();
 
             // ライト再調整
@@ -875,7 +907,6 @@
         // ホバー（浮き出させ）
         function growBook(book) {
             const aspect = window.innerWidth / window.innerHeight;
-            // 縦画面の場合は、手前への飛び出し量を少なめに調整 (0.35)
             const pullZ = aspect < 1.0 ? 0.35 : 0.5;
 
             gsap.to(book.position, {
@@ -951,7 +982,7 @@
             }
         }
 
-        // クリック／タップ決定後のシーン遷移演出
+        // クリック／タップ決定後のシーン遷移演出（開き切り対応）
         function triggerBookTransition(targetBook) {
             isTransitioning = true;
             document.body.style.cursor = 'default';
@@ -982,6 +1013,7 @@
 
             // 画面アスペクト比に応じた手前引き出し位置・カメラのズーム量
             const aspect = window.innerWidth / window.innerHeight;
+            // 本棚が少し引いたため、引き出すZ位置とカメラの位置を補正
             const targetZ = aspect < 1.0 ? 1.4 : 2.2;
             const cameraTargetZ = aspect < 1.0 ? 5.0 : 4.0;
 
@@ -1022,10 +1054,10 @@
                 ease: "power3.inOut"
             }, "<");
 
-            // 3. 表紙を少しパカッと開く
+            // 3. 【表紙を完全に開き切る】(90度ではなく180度近く全開にする)
             clickTl.to(targetBook.userData.hinge.rotation, {
-                y: -Math.PI * 0.35,
-                duration: 0.8,
+                y: -Math.PI * 0.95, // ほぼ180度開き切る
+                duration: 1.0,
                 ease: "power2.out"
             }, "-=0.2");
 
