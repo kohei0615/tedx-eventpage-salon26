@@ -252,7 +252,6 @@
 
             if (!isSpine) {
                 // --- 表紙・裏表紙の装飾デザイン ---
-                // 解像度が上がったため、オフセットや線幅の値を大きく調整
                 const offset = 64; 
 
                 // 外枠
@@ -301,7 +300,6 @@
                     maskCtx.textAlign = 'center';
                     maskCtx.textBaseline = 'middle';
 
-                    // 高解像度に合わせてフォントサイズを大きく (88px)
                     colorCtx.font = 'bold 88px Georgia, serif';
                     maskCtx.font = 'bold 88px Georgia, serif';
 
@@ -313,7 +311,7 @@
                 colorCtx.fillStyle = goldGrad;
                 maskCtx.fillStyle = '#ffffff';
 
-                // 上下の金色の帯（高解像度用にスケーリング）
+                // 上下の金色の帯
                 const bandH = 20;
                 colorCtx.fillRect(40, 80, width - 80, bandH);
                 maskCtx.fillRect(40, 80, width - 80, bandH);
@@ -341,7 +339,6 @@
                     maskCtx.textAlign = 'center';
                     maskCtx.textBaseline = 'middle';
 
-                    // 高解像度用のフォントサイズ (48px)
                     colorCtx.font = 'bold 48px Georgia, serif';
                     maskCtx.font = 'bold 48px Georgia, serif';
 
@@ -357,7 +354,6 @@
 
         // 革のマテリアルと金箔マテリアルを一体化したCanvasTextureセットを生成 (解像度4倍)
         function createBookMaterialMaps(title, baseColorHex, isSpine = false) {
-            // テクスチャのサイズを4倍に拡大し高画質化
             const w = isSpine ? 512 : 1024;
             const h = 1024;
 
@@ -549,7 +545,7 @@
         }
 
         // ==========================================
-        // 3D 本棚の構築
+        // 3D 本棚の構築（コンパクト化）
         // ==========================================
 
         function createBookshelf() {
@@ -582,8 +578,11 @@
                 metalness: 0.1
             });
 
+            // 本を隙間なく並べる配置幅に合わせ、本棚の横幅を「5.0」にコンパクト化
+            const shelfWidth = 5.0;
+
             // A. 下の棚板 (Bottom Shelf)
-            const shelfBottomGeom = new THREE.BoxGeometry(11.0, 0.25, 2.5);
+            const shelfBottomGeom = new THREE.BoxGeometry(shelfWidth, 0.25, 2.5);
             const shelfBottom = new THREE.Mesh(shelfBottomGeom, woodMat);
             shelfBottom.position.set(0, -2.0, 0);
             shelfBottom.receiveShadow = true;
@@ -598,18 +597,18 @@
             // C. 左側板 (Left Wall)
             const wallGeom = new THREE.BoxGeometry(0.25, 4.0, 2.5);
             const leftWall = new THREE.Mesh(wallGeom, woodMat);
-            leftWall.position.set(-5.5, 0, 0);
+            leftWall.position.set(-shelfWidth / 2, 0, 0);
             leftWall.receiveShadow = true;
             leftWall.castShadow = true;
             shelfGroup.add(leftWall);
 
             // D. 右側板 (Right Wall)
             const rightWall = leftWall.clone();
-            rightWall.position.set(5.5, 0, 0);
+            rightWall.position.set(shelfWidth / 2, 0, 0);
             shelfGroup.add(rightWall);
 
             // E. 背板 (Backboard)
-            const backboardGeom = new THREE.BoxGeometry(11.0, 4.0, 0.1);
+            const backboardGeom = new THREE.BoxGeometry(shelfWidth, 4.0, 0.1);
             const backboard = new THREE.Mesh(backboardGeom, woodMat);
             backboard.position.set(0, 0, -1.25);
             backboard.receiveShadow = true;
@@ -629,26 +628,22 @@
             camera.aspect = aspect;
             camera.updateProjectionMatrix();
             renderer.setSize(width, height);
-
-            // 解像度を考慮したピクセル比設定
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-            // 現在のシーン状態に応じてカメラ位置やオブジェクトをレスポンシブ配置
             if (currentScene === 'bookshelf') {
                 if (aspect < 1.0) {
                     // スマートフォンなどの縦画面（Portrait）
-                    // 左右がはみ出さないように、アスペクト比に応じてカメラを引く
-                    camera.position.z = 5.5 + (1.0 - aspect) * 4.2;
-                    camera.position.y = 0.4; // 少し上から見下ろす
+                    // ぎっしり並んだ本が完全に見えるよう、アスペクト比に基づきカメラZ位置を動的計算
+                    camera.position.z = 4.2 + (1.0 - aspect) * 2.0;
+                    camera.position.y = 0.5; // 少し見下ろす
                 } else {
                     // PCやタブレットなどの横画面（Landscape）
-                    camera.position.z = 5.5;
-                    camera.position.y = 0.2;
+                    camera.position.z = 3.5; // 近づけて迫力を出す
+                    camera.position.y = 0.25;
                 }
                 camera.lookAt(0, 0, 0);
             } else if (currentScene === 'opening') {
                 if (aspect < 1.0) {
-                    // オープニングの本も縦画面で綺麗に収まるようZ位置を後退
                     camera.position.z = 6.0 + (1.0 - aspect) * 2.8;
                 } else {
                     camera.position.z = 6.0;
@@ -736,7 +731,6 @@
         // 1. オープニングアニメーション (GSAP)
         function startOpeningSequence() {
             const aspect = window.innerWidth / window.innerHeight;
-            // 縦長・横長に応じて本の移動先Z位置を調整
             const targetZ = aspect < 1.0 ? 1.4 : 2.2;
 
             const tl = gsap.timeline({
@@ -797,10 +791,12 @@
             bookshelfGroup.position.set(0, 0, 0);
             scene.add(bookshelfGroup);
 
-            // 本棚に本を並べる
+            // --- 隙間のない本の配置 ---
             const totalBooks = BOOKS_DATA.length;
-            const startX = -1.8;
-            const spacing = 1.2;
+            // 本の厚み0.5に対して、Zファイティング防止のためのごくわずかな余白0.02を乗せた「0.52」を配置間隔に設定
+            const spacing = 0.52; 
+            // 左右対称になるように開始X座標を動的計算
+            const startX = - (totalBooks - 1) * spacing / 2; 
 
             BOOKS_DATA.forEach((data, index) => {
                 const book = createBook(data.title, data.color);
@@ -808,7 +804,7 @@
                 // 背表紙が手前を向くように回転
                 book.rotation.set(0, Math.PI / 2, 0);
                 
-                // 配置座標計算
+                // 配置座標
                 const xPos = startX + index * spacing;
                 book.position.set(xPos, -0.28, 0);
 
@@ -842,9 +838,7 @@
         // インタラクション (ホバー & クリック・タップ対応)
         // ==========================================
 
-        // デバイス判定（タッチ操作かマウスホバーか）
         function onMouseMove(event) {
-            // トランジション中、またはスマホ（タッチ入力が想定される幅）の場合はmousemoveでの処理を回避する
             if (isTransitioning || currentScene !== 'bookshelf' || window.innerWidth < 768) return;
 
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -881,7 +875,7 @@
         // ホバー（浮き出させ）
         function growBook(book) {
             const aspect = window.innerWidth / window.innerHeight;
-            // 縦画面の場合は、手前への飛び出し量を少なめに調整 (0.35) してカメラに近づきすぎないようにする
+            // 縦画面の場合は、手前への飛び出し量を少なめに調整 (0.35)
             const pullZ = aspect < 1.0 ? 0.35 : 0.5;
 
             gsap.to(book.position, {
@@ -939,8 +933,6 @@
                 }
 
                 if (shelfBooks.includes(clickedObject)) {
-                    // スマホ・PC共通の直感的UX: 
-                    // 1度目の選択で本が手前に出る（ホバー状態）。すでに選択されている本を再度タップすると決定・遷移。
                     if (activeBook === clickedObject) {
                         triggerBookTransition(clickedObject);
                     } else {
@@ -951,7 +943,6 @@
                     }
                 }
             } else {
-                // 本以外の棚や余白をタップした場合は、選択をリセット
                 if (activeBook) {
                     shrinkBook(activeBook);
                     activeBook = null;
@@ -989,10 +980,10 @@
                 }
             });
 
-            // 画面アスペクト比に応じた手前引き出し位置・カメラのズーム量のレスポンシブ計算
+            // 画面アスペクト比に応じた手前引き出し位置・カメラのズーム量
             const aspect = window.innerWidth / window.innerHeight;
-            const targetZ = aspect < 1.0 ? 1.4 : 2.6; // スマホでは引き出し量を手前にしすぎない
-            const cameraTargetZ = aspect < 1.0 ? 6.5 : 4.5; // スマホではカメラを引き気味にする
+            const targetZ = aspect < 1.0 ? 1.4 : 2.2;
+            const cameraTargetZ = aspect < 1.0 ? 5.0 : 4.0;
 
             const clickTl = gsap.timeline({
                 onComplete: () => {
@@ -1017,7 +1008,7 @@
 
             clickTl.to(targetBook.rotation, {
                 x: 0.1,
-                y: 0, // 表紙を正面に向ける (初期 rotation.y = 0)
+                y: 0, // 表紙を正面に向ける
                 z: 0,
                 duration: 1.2,
                 ease: "power3.inOut"
@@ -1049,7 +1040,7 @@
             }, "-=0.6");
 
             clickTl.to("#fade-overlay", {
-                backgroundColor: "#0d0c0b", // 暗転
+                backgroundColor: "#0d0c0b",
                 opacity: 1,
                 duration: 0.8,
                 ease: "power1.in"
@@ -1071,16 +1062,13 @@
             renderer.render(scene, camera);
         }
 
-        // リサイズハンドラー
         function onWindowResize() {
             adjustSceneForViewport();
         }
 
-        // イベントリスナーの登録
         window.addEventListener('resize', onWindowResize);
         window.addEventListener('mousemove', onMouseMove);
         
-        // マウスとタッチ両方のダウンイベントにハンドラーをバインド
         window.addEventListener('mousedown', handlePointerDown);
         window.addEventListener('touchstart', handlePointerDown, { passive: true });
 
