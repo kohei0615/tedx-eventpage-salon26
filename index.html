@@ -114,56 +114,39 @@
            ========================================== */
         #content-overlay {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 76%;
-            max-width: 660px;
-            height: auto;
-            aspect-ratio: 4.4 / 3.2; /* 3D本の見開き比率に固定 */
-            background: #ffffff; /* 白背景 */
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
-            border: 1px solid rgba(0, 0, 0, 0.12);
-            border-radius: 4px;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #ffffff; /* 全面真っ白 */
             z-index: 8;
             display: flex;
+            justify-content: center; /* 横方向中央にカラムを寄せる */
+            align-items: center;     /* 縦方向中央 */
             opacity: 0;
             pointer-events: none;
             color: #2b261f; /* 紙のインク風のダークブラウン */
             overflow: hidden;
         }
 
-        /* 本の背表紙の折り目の陰影 */
-        #content-overlay::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 50px;
-            height: 100%;
-            background: linear-gradient(to right, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.0) 25%, rgba(0, 0, 0, 0.0) 75%, rgba(0, 0, 0, 0.18));
-            pointer-events: none;
-        }
-
         .page-side {
             width: 50%;
-            height: 100%;
+            max-width: 500px; /* 横幅が広がりすぎないように制限 */
+            height: 80%;      /* 高さを少し抑えて中央に配置 */
+            max-height: 680px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            /* 3D本のページ余白に合わせるための設定 */
-            padding: 30px 20px 30px 45px;
+            padding: 40px;
         }
 
         .left-side {
-            padding-right: 45px;
-            padding-left: 20px;
+            padding-right: 40px;
+            border-right: 1px solid rgba(0, 0, 0, 0.08); /* 中央の区切り線 */
         }
 
         .right-side {
-            padding-left: 45px;
-            padding-right: 20px;
+            padding-left: 40px;
         }
 
         /* アンティーク調閉じるボタン */
@@ -239,93 +222,102 @@
                 padding: 8px 16px;
             }
 
-            /* スマホでも3D本は横長見開きの姿勢のままなので、HTML側も横長2カラム比率を維持する */
             #content-overlay {
-                width: 90%;
-                max-width: none;
-                height: auto;
-                aspect-ratio: 4.4 / 3.2;
+                width: 100%;
+                height: 100%;
+                flex-direction: column;
+                justify-content: flex-start;
+                align-items: stretch;
+                overflow-y: auto; /* モバイル時はコンテナ全体をスクロール可能にする */
+                padding: 70px 24px 40px 24px; /* 上部閉じるボタンの余白 */
             }
 
             .page-side {
-                padding: 15px 8px 15px 22px;
+                width: 100%;
+                max-width: none;
+                height: auto;
+                max-height: none;
+                overflow-y: visible; /* 個別のスクロールバーを無効化 */
+                padding: 0;
             }
 
             .left-side {
-                padding-right: 22px;
-                padding-left: 8px;
+                padding-right: 0;
+                border-right: none;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.08); /* 左右の代わりに上下の境界線 */
+                padding-bottom: 24px;
+                margin-bottom: 24px;
             }
 
             .right-side {
-                padding-left: 22px;
-                padding-right: 8px;
+                padding-left: 0;
             }
 
-            /* モバイルスモール画面内で文字や入力要素がはみ出さないように縮小調整 */
+            /* モバイル画面用に文字サイズを調整 */
             #content-overlay h2 {
-                font-size: 1.05rem !important;
-                margin-bottom: 8px !important;
+                font-size: 1.4rem !important;
+                margin-bottom: 12px !important;
             }
             #content-overlay p {
-                font-size: 0.65rem !important;
-                line-height: 1.4 !important;
-                margin-bottom: 8px !important;
+                font-size: 0.85rem !important;
+                line-height: 1.5 !important;
+                margin-bottom: 12px !important;
             }
             #content-overlay label {
-                font-size: 0.6rem !important;
-                margin-bottom: 2px !important;
+                font-size: 0.8rem !important;
+                margin-bottom: 4px !important;
             }
             #content-overlay input, #content-overlay select, #content-overlay textarea, #content-overlay button {
-                padding: 4px !important;
-                font-size: 0.65rem !important;
+                padding: 8px !important;
+                font-size: 0.85rem !important;
             }
             #content-overlay form {
-                gap: 6px !important;
+                gap: 10px !important;
             }
             #content-overlay a {
-                padding: 6px 10px !important;
-                gap: 6px !important;
+                padding: 10px 14px !important;
+                gap: 10px !important;
             }
             #content-overlay a svg {
-                width: 16px !important;
-                height: 16px !important;
+                width: 20px !important;
+                height: 20px !important;
             }
             #content-overlay a div div {
-                font-size: 0.65rem !important;
+                font-size: 0.85rem !important;
             }
             #content-overlay a div div:last-child {
-                font-size: 0.55rem !important;
+                font-size: 0.7rem !important;
             }
             
             /* パートナー企業ロゴ */
             #content-overlay .partner-grid {
-                gap: 8px !important;
+                gap: 12px !important;
             }
             #content-overlay .partner-logo-box {
-                padding: 8px !important;
-                gap: 4px !important;
+                padding: 12px !important;
+                gap: 6px !important;
             }
             #content-overlay .partner-logo-box svg {
-                width: 20px !important;
-                height: 20px !important;
+                width: 32px !important;
+                height: 32px !important;
             }
             #content-overlay .partner-logo-box span {
-                font-size: 0.55rem !important;
+                font-size: 0.75rem !important;
             }
             
             /* コメント掲示板 */
             #comment-list-container {
-                max-height: 120px !important;
-                gap: 6px !important;
+                max-height: 220px !important;
+                gap: 8px !important;
             }
             #comment-list-container div {
-                padding: 6px 10px !important;
+                padding: 8px 12px !important;
             }
             #comment-list-container div div span {
-                font-size: 0.6rem !important;
+                font-size: 0.75rem !important;
             }
             #comment-list-container div p {
-                font-size: 0.6rem !important;
+                font-size: 0.75rem !important;
             }
 
             #close-button {
