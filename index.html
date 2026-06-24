@@ -110,7 +110,7 @@
         }
 
         /* ==========================================
-           見開きコンテンツオーバーレイ＆閉じるボタン (透過化)
+           見開きコンテンツオーバーレイ＆閉じるボタン
            ========================================== */
         #content-overlay {
             position: absolute;
@@ -121,15 +121,29 @@
             max-width: 660px;
             height: auto;
             aspect-ratio: 4.4 / 3.2; /* 3D本の見開き比率に固定 */
-            background: transparent; /* 背景を完全透過にして、後ろの3D本モデルのページと融合させる */
-            box-shadow: none;
-            border: none;
+            background: #ffffff; /* 白背景 */
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            border-radius: 4px;
             z-index: 8;
             display: flex;
             opacity: 0;
             pointer-events: none;
             color: #2b261f; /* 紙のインク風のダークブラウン */
             overflow: hidden;
+        }
+
+        /* 本の背表紙の折り目の陰影 */
+        #content-overlay::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 100%;
+            background: linear-gradient(to right, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.0) 25%, rgba(0, 0, 0, 0.0) 75%, rgba(0, 0, 0, 0.18));
+            pointer-events: none;
         }
 
         .page-side {
@@ -1219,52 +1233,55 @@
             const targetZ = aspect < 1.0 ? 1.4 : 2.2;
             const cameraTargetZ = aspect < 1.0 ? 3.9 : 3.8; // 見かけの距離 (PC 1.6, スマホ 2.5) で同期
 
+            // 先に見開きコンテンツを挿入しておく (フェードイン時にすぐ表示されるようにする)
+            setupBookContent(targetBook.userData.url);
+
             const clickTl = gsap.timeline({
                 onComplete: () => {
-                    // アニメーション完了後、見開きコンテンツを表示
-                    setupBookContent(targetBook.userData.url);
-                    
-                    gsap.to(["#content-overlay", "#close-button"], {
-                        opacity: 1,
-                        duration: 0.6,
-                        pointerEvents: "auto"
-                    });
+                    isTransitioning = false;
                 }
             });
 
-            // 1. 本を画面中央へ引き出す
+            // 1. 本を画面中央へ引き出す (正面に向ける)。カメラは最初、少し離れた手前まで近づく。
             clickTl.to(targetBook.position, {
                 x: 0,
                 y: 0,
                 z: targetZ,
-                duration: 1.2,
-                ease: "power3.inOut"
+                duration: 1.0,
+                ease: "power2.out"
             });
 
             clickTl.to(targetBook.rotation, {
                 x: 0.1,
                 y: 0, // 表紙を正面に向ける
                 z: 0,
-                duration: 1.2,
-                ease: "power3.inOut"
-            }, "<");
-
-            // 2. カメラズーム
-            clickTl.to(camera.position, {
-                z: cameraTargetZ,
-                y: 0,
-                duration: 1.2,
-                ease: "power3.inOut"
-            }, "<");
-
-            // 3. 表紙を完全に開き切る (180度全開)
-            clickTl.to(targetBook.userData.hinge.rotation, {
-                y: -Math.PI * 0.95,
                 duration: 1.0,
                 ease: "power2.out"
-            }, "-=0.2");
+            }, "<");
 
-            // 4. 本の内側から光が漏れる演出
+            // カメラの初期接近 (最終接近目標より1.0ユニット手前)
+            clickTl.to(camera.position, {
+                z: cameraTargetZ + 1.0,
+                y: 0,
+                duration: 1.0,
+                ease: "power2.out"
+            }, "<");
+
+            // 2. 表紙を開き切る (180度全開)。同時に、カメラを最終接近位置 (cameraTargetZ) まで一気に近づける！
+            // これにより、本が開きながらページがカメラに向かってくる（ズームインする）演出を実現。
+            clickTl.to(targetBook.userData.hinge.rotation, {
+                y: -Math.PI * 0.95,
+                duration: 1.2,
+                ease: "power2.inOut"
+            });
+
+            clickTl.to(camera.position, {
+                z: cameraTargetZ,
+                duration: 1.2,
+                ease: "power2.inOut"
+            }, "<");
+
+            // 3. 本の内側から光が漏れる演出
             const bookGlow = new THREE.PointLight('#ffffff', 0, 10);
             bookGlow.position.set(0, 0, 0.1);
             targetBook.add(bookGlow);
@@ -1273,6 +1290,14 @@
             clickTl.to(bookGlow, {
                 intensity: 6.0,
                 duration: 0.8
+            }, "-=0.8");
+
+            // 4. カメラの接近に合わせて、HTMLコンテンツ（白背景）を滑らかにフェードイン！
+            clickTl.to(["#content-overlay", "#close-button"], {
+                opacity: 1,
+                duration: 0.7,
+                pointerEvents: "auto",
+                ease: "power2.out"
             }, "-=0.6");
         }
 
