@@ -1297,7 +1297,8 @@
         // 戻るボタン（本を閉じて本棚へ戻す逆再生アニメーション）
         // ==========================================
         function closeActiveBook() {
-            if (!activeBook) return;
+            if (!activeBook || isTransitioning) return;
+            isTransitioning = true; // 閉じる遷移中フラグをオンにして二重入力を完全にブロック
 
             // コンテンツのフェードアウト
             gsap.to(["#content-overlay", "#close-button"], {
@@ -1611,6 +1612,10 @@
         window.addEventListener('resize', onWindowResize);
         window.addEventListener('mousemove', onMouseMove);
         window.addEventListener('pointerdown', handlePointerDown);
+
+        // UI要素をクリックした際に、後ろの3D空間レイキャスター（pointerdown）が誤反応するのを防ぐ
+        document.getElementById('content-overlay').addEventListener('pointerdown', (e) => e.stopPropagation());
+        document.getElementById('close-button').addEventListener('pointerdown', (e) => e.stopPropagation());
 
         window.onload = init;
 
