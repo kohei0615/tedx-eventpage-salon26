@@ -1268,6 +1268,7 @@
             const bookGlow = new THREE.PointLight('#ffffff', 0, 10);
             bookGlow.position.set(0, 0, 0.1);
             targetBook.add(bookGlow);
+            targetBook.userData.glow = bookGlow; // 参照を保存してクリーンアップ可能にする
 
             clickTl.to(bookGlow, {
                 intensity: 6.0,
@@ -1306,12 +1307,26 @@
                 }
             });
 
-            // 1. 本の表紙を閉じる
+            // 1. 本の表紙を閉じる。同時に内側の光をフェードアウトさせてクリーンアップ
             closeTl.to(activeBook.userData.hinge.rotation, {
                 y: 0,
                 duration: 0.8,
                 ease: "power2.inOut"
             });
+            if (activeBook.userData.glow) {
+                const glowLight = activeBook.userData.glow;
+                const bookToCleanup = activeBook;
+                closeTl.to(glowLight, {
+                    intensity: 0,
+                    duration: 0.8,
+                    ease: "power2.inOut",
+                    onComplete: () => {
+                        bookToCleanup.remove(glowLight);
+                        glowLight.dispose();
+                    }
+                }, "<");
+                activeBook.userData.glow = null;
+            }
 
             // 2. 本を棚の元のスロットに戻す
             const index = BOOKS_DATA.findIndex(b => b.url === activeBook.userData.url);
