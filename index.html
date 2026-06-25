@@ -1175,8 +1175,28 @@
                 shelfBooks.push(book);
             });
 
-            // 本棚シーン用にカメラやオブジェクト配置を再調整 (離れた位置に後退)
+            // 本棚シーン用にカメラやオブジェクト配置を再調整 (最終位置を決定)
             adjustSceneForViewport();
+
+            // 遠方からのズームインカメラワークの設定
+            const targetCamY = camera.position.y;
+            const targetCamZ = camera.position.z;
+
+            // 初期位置を少し遠く・高い位置に設定して lookAt
+            camera.position.z = targetCamZ + 2.5;
+            camera.position.y = targetCamY + 0.3;
+            camera.lookAt(0, 0, 0);
+
+            // カメラのズームインアニメーション
+            gsap.to(camera.position, {
+                y: targetCamY,
+                z: targetCamZ,
+                duration: 2.2, // フェードアウトより少し長めにして、余韻を残す
+                ease: "power2.out",
+                onUpdate: () => {
+                    camera.lookAt(0, 0, 0);
+                }
+            });
 
             // ライト再調整
             spotLight.intensity = 3.5;
