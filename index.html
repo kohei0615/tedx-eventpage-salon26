@@ -328,6 +328,78 @@
                 font-size: 16px;
             }
         }
+
+        /* ==========================================
+           オープニングのタップガイダンス用スタイル
+           ========================================== */
+        #opening-prompt {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        .opening-prompt-text {
+            margin-top: 80px; /* 波紋の下に配置 */
+            font-size: 1.1rem;
+            letter-spacing: 0.15em;
+            color: #d4af37; /* ゴールド */
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.6);
+            font-weight: 300;
+            animation: pulseText 2.0s infinite ease-in-out;
+            white-space: nowrap;
+        }
+
+        .ripple-circle {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: transparent;
+            border: 2px solid rgba(212, 175, 55, 0.8);
+            box-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
+            animation: rippleAnim 2.4s infinite cubic-bezier(0.1, 0.8, 0.3, 1);
+            transform-origin: center;
+        }
+
+        .ripple-circle.delay-1 {
+            animation-delay: 0.8s;
+        }
+
+        .ripple-circle.delay-2 {
+            animation-delay: 1.6s;
+        }
+
+        @keyframes rippleAnim {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            100% {
+                transform: scale(6.0);
+                opacity: 0;
+            }
+        }
+
+        @keyframes pulseText {
+            0%, 100% {
+                opacity: 0.6;
+            }
+            50% {
+                opacity: 1.0;
+            }
+        }
     </style>
     <!-- Three.js (r128) と GSAP (アニメーションライブラリ) をCDNから読み込む -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -338,6 +410,14 @@
     <div id="loader">LOADING...</div>
     <div id="canvas-container"></div>
     <div id="fade-overlay"></div>
+
+    <!-- オープニングのタップガイダンス (波紋効果とテキスト) -->
+    <div id="opening-prompt">
+        <div class="ripple-circle"></div>
+        <div class="ripple-circle delay-1"></div>
+        <div class="ripple-circle delay-2"></div>
+        <div class="opening-prompt-text">タッチで本を開く</div>
+    </div>
 
     <!-- 本棚シーン用のUI表示 -->
     <div id="ui-overlay"></div>
@@ -374,6 +454,7 @@
         let activeBook = null;// 現在ホバー/操作中の本
         let isTransitioning = false; // シーン遷移中フラグ
         let currentScene = 'opening'; // 'opening' or 'bookshelf'
+        let isOpeningClicked = false; // オープニング中のクリック重複防止フラグ
 
         // レイキャスター（マウス・タッチとの衝突判定用）
         const raycaster = new THREE.Raycaster();
@@ -968,8 +1049,55 @@
         // アニメーションフロー
         // ==========================================
 
-        // 1. オープニングアニメーション (GSAP)
+        // 1. オープニングアニメーション 第1段階 (本がズームインして止まる)
         function startOpeningSequence() {
+            const aspect = window.innerWidth / window.innerHeight;
+            const targetZ = aspect < 1.0 ? 1.4 : 2.2;
+
+            // 本を手前に引き寄せる
+            gsap.to(openingBookGroup.position, {
+                z: targetZ,
+                y: -0.15,
+                duration: 2.2,
+                ease: "power2.out",
+                onComplete: () => {
+                    // ズームイン完了後に波紋とテキストを表示
+                    showOpeningPrompt();
+                }
+            });
+
+            // 角度を正面に向ける
+            gsap.to(openingBookGroup.rotation, {
+                x: 0,
+                y: 0,
+                z: 0,
+                duration: 2.0,
+                ease: "power2.out"
+            });
+        }
+
+        // タップ促しプロンプトの表示
+        function showOpeningPrompt() {
+            const prompt = document.getElementById('opening-prompt');
+            if (prompt) {
+                prompt.style.opacity = '1';
+            }
+            document.body.style.cursor = 'pointer';
+        }
+
+        // タップ促しプロンプトの非表示
+        function hideOpeningPrompt() {
+            const prompt = document.getElementById('opening-prompt');
+            if (prompt) {
+                prompt.style.opacity = '0';
+            }
+            document.body.style.cursor = 'default';
+        }
+
+        // 1-2. オープニングアニメーション 第2段階 (クリックされて本が開き、ホワイトアウトする)
+        function triggerOpeningBookOpen() {
+            isTransitioning = true; // 3D浮遊アニメーションを停止
+            
             const aspect = window.innerWidth / window.innerHeight;
             const targetZ = aspect < 1.0 ? 1.4 : 2.2;
 
@@ -979,29 +1107,12 @@
                 }
             });
 
-            // 本を手前に引き寄せる
-            tl.to(openingBookGroup.position, {
-                z: targetZ,
-                y: -0.15,
-                duration: 2.2,
-                ease: "power2.inOut"
-            });
-
-            // 角度を正面に向ける
-            tl.to(openingBookGroup.rotation, {
-                x: 0,
-                y: 0,
-                z: 0,
-                duration: 2.0,
-                ease: "power2.inOut"
-            }, "<");
-
             // 表紙を大きく開き切る
             tl.to(openingBookGroup.userData.hinge.rotation, {
                 y: -Math.PI * 0.95,
                 duration: 1.8,
                 ease: "power2.inOut"
-            }, "-=0.8");
+            });
 
             // カメラが本の内側（ページ）に向かって一気に飛び込むズームイン効果
             tl.to(camera.position, {
@@ -1030,6 +1141,7 @@
         // 2. 本棚へのシーン切り替え処理
         function transitionToBookshelf() {
             currentScene = 'bookshelf';
+            isTransitioning = false; // シーン遷移フラグをリセットして操作可能にする
 
             // オープニング要素を非表示
             scene.remove(openingBookGroup);
@@ -1155,6 +1267,17 @@
 
         // マウスクリックおよびタッチ操作の共通ハンドラー (pointerdownに統一して多重発火を排除)
         function handlePointerDown(event) {
+            // オープニングシーンでのタップ（波紋クリック）時の処理
+            if (currentScene === 'opening') {
+                const prompt = document.getElementById('opening-prompt');
+                if (prompt && prompt.style.opacity === '1' && !isOpeningClicked) {
+                    isOpeningClicked = true;
+                    hideOpeningPrompt();
+                    triggerOpeningBookOpen();
+                }
+                return;
+            }
+
             if (isTransitioning || currentScene !== 'bookshelf') return;
 
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
