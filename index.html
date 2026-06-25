@@ -901,7 +901,6 @@
             frontCoverHinge.add(frontCoverMesh);
             bookGroup.add(frontCoverHinge);
 
-            const bookInfo = SHELF_LAYOUT.find(b => b.title === title || b.spineTitle === spineText);
             bookGroup.userData = {
                 hinge: frontCoverHinge,
                 title: title,
