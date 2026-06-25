@@ -466,10 +466,22 @@
 
         // 本の情報定義（タイトル、背表紙用英語、カバーのベース色、遷移URL/コンテンツキー）
         const BOOKS_DATA = [
-            { title: "パートナー\nOur Partners", spineTitle: "Partners", color: "#4a121a", url: "partners" },   // バーガンディレッド
-            { title: "アンケート\nQuestionnaire", spineTitle: "Survey", color: "#112233", url: "survey" },       // ロイヤルネイビー
-            { title: "Comment\nScreen", spineTitle: "Comments", color: "#142d1f", url: "comments" },            // フォレストグリーン
-            { title: "アカウント\nSocial Accounts", spineTitle: "Socials", color: "#4f3613", url: "socials" }    // アンバーゴールド
+            { title: "パートナー\nOur Partners", spineTitle: "Partners", color: "#4a121a", url: "partners", isActive: true },   // バーガンディレッド
+            { title: "アンケート\nQuestionnaire", spineTitle: "Survey", color: "#112233", url: "survey", isActive: true },       // ロイヤルネイビー
+            { title: "Comment\nScreen", spineTitle: "Comments", color: "#142d1f", url: "comments", isActive: true },            // フォレストグリーン
+            { title: "アカウント\nSocial Accounts", spineTitle: "Socials", color: "#4f3613", url: "socials", isActive: true }    // アンバーゴールド
+        ];
+
+        // 本棚を埋めるダミーの本を含めた全体のレイアウト順
+        const SHELF_LAYOUT = [
+            { title: "アーカイブ\nArchive Vol.1", spineTitle: "Archive I", color: "#2b3d30", url: "dummy1", isActive: false },
+            { title: "ドキュメント\nDocs Vol.2", spineTitle: "Docs II", color: "#3f2a47", url: "dummy2", isActive: false },
+            BOOKS_DATA[0], // Partners
+            BOOKS_DATA[1], // Survey
+            BOOKS_DATA[2], // Comments
+            BOOKS_DATA[3], // Socials
+            { title: "ギャラリー\nPortfolio", spineTitle: "Portfolio", color: "#1e3240", url: "dummy3", isActive: false },
+            { title: "エッセイ\nEssays", spineTitle: "Essays", color: "#4a3525", url: "dummy4", isActive: false }
         ];
 
         // グローバル変数
@@ -769,9 +781,14 @@
         function createBook(title, colorHex, spineText) {
             const bookGroup = new THREE.Group();
 
+            // もしこの本がダミー本（SHELF_LAYOUTで isActive: false）なら、テキスト描画を無効化する
+            const bookInfo = SHELF_LAYOUT.find(b => b.title === title || b.spineTitle === spineText);
+            const drawTitle = (bookInfo && !bookInfo.isActive) ? "" : title;
+            const drawSpine = (bookInfo && !bookInfo.isActive) ? "" : spineText;
+
             // 1. 各パーツのマテリアル準備
-            const spineMaps = createBookMaterialMaps(spineText, colorHex, true);
-            const coverMaps = createBookMaterialMaps(title, colorHex, false);
+            const spineMaps = createBookMaterialMaps(drawSpine, colorHex, true);
+            const coverMaps = createBookMaterialMaps(drawTitle, colorHex, false);
 
             const spineMat = new THREE.MeshStandardMaterial({
                 map: spineMaps.map,
@@ -884,10 +901,12 @@
             frontCoverHinge.add(frontCoverMesh);
             bookGroup.add(frontCoverHinge);
 
+            const bookInfo = SHELF_LAYOUT.find(b => b.title === title || b.spineTitle === spineText);
             bookGroup.userData = {
                 hinge: frontCoverHinge,
                 title: title,
-                url: BOOKS_DATA.find(b => b.title === title || b.spineTitle === spineText)?.url || "#"
+                url: bookInfo?.url || "#",
+                isActive: bookInfo ? bookInfo.isActive : true
             };
 
             return bookGroup;
@@ -1205,11 +1224,11 @@
             scene.add(bookshelfGroup);
 
             // --- 隙間のない本の配置 ---
-            const totalBooks = BOOKS_DATA.length;
+            const totalBooks = SHELF_LAYOUT.length;
             const spacing = 0.52; 
             const startX = - (totalBooks - 1) * spacing / 2; 
 
-            BOOKS_DATA.forEach((data, index) => {
+            SHELF_LAYOUT.forEach((data, index) => {
                 const book = createBook(data.title, data.color, data.spineTitle);
                 
                 // 背表紙が手前を向くように回転
@@ -1219,7 +1238,7 @@
                 const xPos = startX + index * spacing;
                 book.position.set(xPos, -0.28, 0);
 
-                book.name = `book_${data.url}`;
+                book.name = data.isActive ? `book_${data.url}` : `dummy_book_${index}`;
 
                 bookshelfGroup.add(book);
                 shelfBooks.push(book);
@@ -1308,13 +1327,19 @@
                     clickedObject = clickedObject.parent;
                 }
 
-                if (shelfBooks.includes(clickedObject)) {
+                if (shelfBooks.includes(clickedObject) && clickedObject.userData.isActive) {
                     if (activeBook !== clickedObject) {
                         if (activeBook) shrinkBook(activeBook);
 
                         activeBook = clickedObject;
                         growBook(activeBook);
                         document.body.style.cursor = 'pointer';
+                    }
+                } else {
+                    if (activeBook) {
+                        shrinkBook(activeBook);
+                        activeBook = null;
+                        document.body.style.cursor = 'default';
                     }
                 }
             } else {
@@ -1401,7 +1426,7 @@
                     clickedObject = clickedObject.parent;
                 }
 
-                if (shelfBooks.includes(clickedObject)) {
+                if (shelfBooks.includes(clickedObject) && clickedObject.userData.isActive) {
                     if (activeBook === clickedObject) {
                         triggerBookTransition(clickedObject);
                     } else {
@@ -1409,6 +1434,12 @@
                         activeBook = clickedObject;
                         growBook(activeBook);
                         document.body.style.cursor = 'pointer';
+                    }
+                } else {
+                    if (activeBook) {
+                        shrinkBook(activeBook);
+                        activeBook = null;
+                        document.body.style.cursor = 'default';
                     }
                 }
             } else {
@@ -1579,9 +1610,9 @@
             }
 
             // 2. 本を棚の元のスロットに戻す
-            const index = BOOKS_DATA.findIndex(b => b.url === activeBook.userData.url);
+            const index = SHELF_LAYOUT.findIndex(b => b.url === activeBook.userData.url);
             const spacing = 0.52;
-            const startX = - (BOOKS_DATA.length - 1) * spacing / 2;
+            const startX = - (SHELF_LAYOUT.length - 1) * spacing / 2;
             const originalX = startX + index * spacing;
 
             closeTl.to(activeBook.position, {
