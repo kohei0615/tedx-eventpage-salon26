@@ -360,34 +360,36 @@
 
         .ripple-circle {
             position: absolute;
-            width: 20px;
-            height: 20px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             background: transparent;
-            border: 2px solid rgba(212, 175, 55, 0.8);
-            box-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
-            animation: rippleAnim 2.4s infinite cubic-bezier(0.1, 0.8, 0.3, 1);
+            /* 波紋らしく見せるために、境界線を太くしつつ非常に薄くし、内外に強めのぼかしを入れる */
+            border: 3px solid rgba(212, 175, 55, 0.12);
+            box-shadow: 0 0 16px 4px rgba(212, 175, 55, 0.5),
+                        inset 0 0 16px 4px rgba(212, 175, 55, 0.5);
+            animation: rippleAnim 2.8s infinite cubic-bezier(0.1, 0.8, 0.3, 1);
             transform-origin: center;
         }
 
         .ripple-circle.delay-1 {
-            animation-delay: 0.8s;
+            animation-delay: 0.93s;
         }
 
         .ripple-circle.delay-2 {
-            animation-delay: 1.6s;
+            animation-delay: 1.86s;
         }
 
         @keyframes rippleAnim {
             0% {
-                transform: scale(0.5);
+                transform: scale(0.4);
                 opacity: 0;
             }
-            10% {
+            15% {
                 opacity: 1;
             }
             100% {
-                transform: scale(6.0);
+                transform: scale(10.0);
                 opacity: 0;
             }
         }
@@ -399,6 +401,25 @@
             50% {
                 opacity: 1.0;
             }
+        }
+
+        /* クリック時に発生する特大の波紋効果 */
+        .click-ripple {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 40px;
+            height: 40px;
+            margin-top: -20px;
+            margin-left: -20px;
+            border-radius: 50%;
+            background: transparent;
+            border: 5px solid rgba(212, 175, 55, 0.6);
+            box-shadow: 0 0 25px 8px rgba(212, 175, 55, 0.5),
+                        inset 0 0 25px 8px rgba(212, 175, 55, 0.5);
+            pointer-events: none;
+            transform-origin: center;
+            z-index: 9999;
         }
     </style>
     <!-- Three.js (r128) と GSAP (アニメーションライブラリ) をCDNから読み込む -->
@@ -1094,6 +1115,30 @@
             document.body.style.cursor = 'default';
         }
 
+        // クリック時に画面中央から大きく広がる特大の波紋演出を生成する
+        function createClickRipple() {
+            // 2枚の波紋を少し時間をずらして生成し、干渉する波の重なりを表現する
+            for (let i = 0; i < 2; i++) {
+                const ripple = document.createElement('div');
+                ripple.className = 'click-ripple';
+                document.body.appendChild(ripple);
+
+                gsap.fromTo(ripple, 
+                    { scale: 0.1, opacity: 1 },
+                    { 
+                        scale: 25.0, // 画面全体を覆い尽くすほどのサイズへ急拡大
+                        opacity: 0, 
+                        duration: 1.2 - i * 0.2, // 2枚目は少し速く消え去る
+                        delay: i * 0.15, // 0.15秒の遅延
+                        ease: "power2.out", 
+                        onComplete: () => {
+                            ripple.remove();
+                        }
+                    }
+                );
+            }
+        }
+
         // 1-2. オープニングアニメーション 第2段階 (クリックされて本が開き、ホワイトアウトする)
         function triggerOpeningBookOpen() {
             isTransitioning = true; // 3D浮遊アニメーションを停止
@@ -1295,6 +1340,7 @@
                 const prompt = document.getElementById('opening-prompt');
                 if (prompt && prompt.style.opacity === '1' && !isOpeningClicked) {
                     isOpeningClicked = true;
+                    createClickRipple(); // 特大クリック波紋を生成
                     hideOpeningPrompt();
                     triggerOpeningBookOpen();
                 }
