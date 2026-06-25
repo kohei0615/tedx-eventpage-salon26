@@ -1108,7 +1108,7 @@
             if (prompt) {
                 prompt.style.opacity = '1';
             }
-            document.body.style.cursor = 'pointer';
+            document.body.style.cursor = 'default';
         }
 
         // タップ促しプロンプトの非表示
@@ -1270,7 +1270,30 @@
         // ==========================================
 
         function onMouseMove(event) {
-            if (isTransitioning || currentScene !== 'bookshelf' || window.innerWidth < 768) return;
+            if (isTransitioning) return;
+
+            // オープニングシーンでのマウス移動時の判定（波紋の範囲内ならカーソルを pointer に変更）
+            if (currentScene === 'opening') {
+                const prompt = document.getElementById('opening-prompt');
+                if (prompt && prompt.style.opacity === '1') {
+                    const centerX = window.innerWidth / 2;
+                    const centerY = window.innerHeight / 2;
+                    const dx = event.clientX - centerX;
+                    const dy = event.clientY - centerY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance <= 150) {
+                        document.body.style.cursor = 'pointer';
+                    } else {
+                        document.body.style.cursor = 'default';
+                    }
+                } else {
+                    document.body.style.cursor = 'default';
+                }
+                return;
+            }
+
+            if (currentScene !== 'bookshelf' || window.innerWidth < 768) return;
 
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -1344,6 +1367,18 @@
             if (currentScene === 'opening') {
                 const prompt = document.getElementById('opening-prompt');
                 if (prompt && prompt.style.opacity === '1' && !isOpeningClicked) {
+                    // 画面中央からの距離を計算 (波の広がる範囲(半径150px)内のみクリック可能にする)
+                    const centerX = window.innerWidth / 2;
+                    const centerY = window.innerHeight / 2;
+                    const dx = event.clientX - centerX;
+                    const dy = event.clientY - centerY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // 半径150pxの外側なら無視する
+                    if (distance > 150) {
+                        return;
+                    }
+
                     isOpeningClicked = true;
                     createClickRipple(); // 特大クリック波紋を生成
                     hideOpeningPrompt();
