@@ -364,10 +364,13 @@
             height: 30px;
             border-radius: 50%;
             background: transparent;
-            /* 波紋らしく見せるために、境界線を太くしつつ非常に薄くし、内外に強めのぼかしを入れる */
-            border: 3px solid rgba(212, 175, 55, 0.12);
-            box-shadow: 0 0 16px 4px rgba(212, 175, 55, 0.5),
-                        inset 0 0 16px 4px rgba(212, 175, 55, 0.5);
+            /* 境界線は太めに確保しつつ、不透明度を調整 */
+            border: 6px solid rgba(212, 175, 55, 0.4);
+            /* 内外に影を付けて柔らかい光の輪を形成 */
+            box-shadow: 0 0 12px rgba(212, 175, 55, 0.4),
+                        inset 0 0 12px rgba(212, 175, 55, 0.4);
+            /* ぼかしフィルターで境界線を完全に溶かす */
+            filter: blur(4px);
             animation: rippleAnim 2.8s infinite cubic-bezier(0.1, 0.8, 0.3, 1);
             transform-origin: center;
         }
@@ -414,9 +417,11 @@
             margin-left: -20px;
             border-radius: 50%;
             background: transparent;
-            border: 5px solid rgba(212, 175, 55, 0.6);
-            box-shadow: 0 0 25px 8px rgba(212, 175, 55, 0.5),
-                        inset 0 0 25px 8px rgba(212, 175, 55, 0.5);
+            border: 8px solid rgba(212, 175, 55, 0.7);
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.5),
+                        inset 0 0 20px rgba(212, 175, 55, 0.5);
+            /* クリックの衝撃波もぼかして滑らかな波にする */
+            filter: blur(4px);
             pointer-events: none;
             transform-origin: center;
             z-index: 9999;
