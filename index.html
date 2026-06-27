@@ -464,11 +464,19 @@
         const BOOK_THICKNESS = 0.5;
         const COVER_T = 0.08; // 表紙の厚み
 
+        // ==========================================
+        // 外部遷移先URL設定（空文字の場合は通常の見開きコンテンツを表示）
+        // ==========================================
+        const EXTERNAL_LINKS = {
+            survey: "https://docs.google.com/forms/d/e/1FAIpQLSf6P667U8Lh112233/viewform", // アンケートの外部URL（ユーザーが変更可能）
+            comments: "https://commentscreen.example.com"                                 // コメントスクリーンの外部URL（ユーザーが変更可能）
+        };
+
         // 本の情報定義（タイトル、背表紙用英語、カバーのベース色、遷移URL/コンテンツキー）
         const BOOKS_DATA = [
             { title: "パートナー\nOur Partners", spineTitle: "Partners", color: "#4a121a", url: "partners", isActive: true },   // バーガンディレッド
             { title: "アンケート\nQuestionnaire", spineTitle: "Survey", color: "#112233", url: "survey", isActive: true },       // ロイヤルネイビー
-            { title: "Comment\nScreen", spineTitle: "Comments", color: "#142d1f", url: "comments", isActive: true },            // フォレストグリーン
+            { title: "Comment/Screen", spineTitle: "Comment\nScreen", color: "#142d1f", url: "comments", isActive: true },      // フォレストグリーン
             { title: "アカウント\nSocial Accounts", spineTitle: "Socials", color: "#4f3613", url: "socials", isActive: true }    // アンバーゴールド
         ];
 
@@ -658,57 +666,98 @@
                 colorCtx.strokeRect(30, 120, width - 60, height - 240);
                 maskCtx.strokeRect(30, 120, width - 60, height - 240);
 
-                // 背表紙の文字（縦積み: 回転を廃止し、1文字ずつ直立のまま上から下へ並べる）
+                // 背表紙の文字（縦積み: 改行がある場合は複数列に展開する）
                 if (text) {
-                    const cleanText = text.replace(/\n|\\n/g, " ").toUpperCase();
-                    const chars = cleanText.split("");
+                    if (text.includes('\n') || text.includes('\\n')) {
+                        const lines = text.split(/\n|\\n/);
+                        const numCols = lines.length;
 
-                    // 【背表紙テキストの大型化】: 76pxに大幅スケールアップして視認性を強化
-                    let fontSize = 76;
-                    let lineHeight = 86;
-                    if (chars.length > 8) {
-                        fontSize = 56;
-                        lineHeight = 64;
+                        // 列数に応じてフォントサイズを縮小（2列の場合は42px程度が最適）
+                        const fontSize = 42;
+                        const lineHeight = 50;
+
+                        colorCtx.font = `bold ${fontSize}px Georgia, serif`;
+                        maskCtx.font = `bold ${fontSize}px Georgia, serif`;
+                        colorCtx.textAlign = 'center';
+                        colorCtx.textBaseline = 'middle';
+                        maskCtx.textAlign = 'center';
+                        maskCtx.textBaseline = 'middle';
+
+                        lines.forEach((line, colIdx) => {
+                            const cleanLine = line.toUpperCase();
+                            const chars = cleanLine.split("");
+
+                            // X座標：列数に応じて均等配置。2列の場合、53.3px と 106.7px
+                            const colWidth = width / (numCols + 1);
+                            const xPos = colWidth * (colIdx + 1);
+
+                            const totalHeight = chars.length * lineHeight;
+                            const startY = (height / 2) - (totalHeight / 2) + (lineHeight / 2);
+
+                            chars.forEach((char, i) => {
+                                const yPos = startY + i * lineHeight;
+
+                                colorCtx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+                                colorCtx.shadowBlur = 4;
+                                colorCtx.shadowOffsetX = 1.5;
+                                colorCtx.shadowOffsetY = 1.5;
+
+                                colorCtx.strokeStyle = '#000000';
+                                colorCtx.lineWidth = 4;
+                                colorCtx.strokeText(char, xPos, yPos);
+
+                                colorCtx.shadowColor = 'transparent';
+                                colorCtx.fillStyle = goldGrad;
+                                colorCtx.fillText(char, xPos, yPos);
+
+                                maskCtx.fillText(char, xPos, yPos);
+                            });
+                        });
+                    } else {
+                        // 1列の処理（従来通り）
+                        const cleanText = text.replace(/\n|\\n/g, " ").toUpperCase();
+                        const chars = cleanText.split("");
+
+                        let fontSize = 76;
+                        let lineHeight = 86;
+                        if (chars.length > 8) {
+                            fontSize = 56;
+                            lineHeight = 64;
+                        }
+                        if (chars.length > 12) {
+                            fontSize = 40;
+                            lineHeight = 46;
+                        }
+
+                        colorCtx.font = `bold ${fontSize}px Georgia, serif`;
+                        maskCtx.font = `bold ${fontSize}px Georgia, serif`;
+                        colorCtx.textAlign = 'center';
+                        colorCtx.textBaseline = 'middle';
+                        maskCtx.textAlign = 'center';
+                        maskCtx.textBaseline = 'middle';
+
+                        const totalHeight = chars.length * lineHeight;
+                        const startY = (height / 2) - (totalHeight / 2) + (lineHeight / 2);
+
+                        chars.forEach((char, i) => {
+                            const yPos = startY + i * lineHeight;
+
+                            colorCtx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+                            colorCtx.shadowBlur = 4;
+                            colorCtx.shadowOffsetX = 1.5;
+                            colorCtx.shadowOffsetY = 1.5;
+
+                            colorCtx.strokeStyle = '#000000';
+                            colorCtx.lineWidth = 4;
+                            colorCtx.strokeText(char, width / 2, yPos);
+
+                            colorCtx.shadowColor = 'transparent';
+                            colorCtx.fillStyle = goldGrad;
+                            colorCtx.fillText(char, width / 2, yPos);
+
+                            maskCtx.fillText(char, width / 2, yPos);
+                        });
                     }
-                    if (chars.length > 12) {
-                        fontSize = 40;
-                        lineHeight = 46;
-                    }
-
-                    colorCtx.font = `bold ${fontSize}px Georgia, serif`;
-                    maskCtx.font = `bold ${fontSize}px Georgia, serif`;
-
-                    colorCtx.textAlign = 'center';
-                    colorCtx.textBaseline = 'middle';
-                    maskCtx.textAlign = 'center';
-                    maskCtx.textBaseline = 'middle';
-
-                    // 縦方向の中央揃えの開始Y座標を計算
-                    const totalHeight = chars.length * lineHeight;
-                    const startY = (height / 2) - (totalHeight / 2) + (lineHeight / 2);
-
-                    chars.forEach((char, i) => {
-                        const yPos = startY + i * lineHeight;
-
-                        // 1. シャドウ (ドロップシャドウ) - 160px幅に合わせて細かく調整
-                        colorCtx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-                        colorCtx.shadowBlur = 4;
-                        colorCtx.shadowOffsetX = 1.5;
-                        colorCtx.shadowOffsetY = 1.5;
-
-                        // 2. 黒の縁取り - 160px幅に合わせて細く (線幅4) してフォント崩れを防ぐ
-                        colorCtx.strokeStyle = '#000000';
-                        colorCtx.lineWidth = 4;
-                        colorCtx.strokeText(char, width / 2, yPos);
-
-                        // 3. ゴールドで文字を塗りつぶし
-                        colorCtx.shadowColor = 'transparent';
-                        colorCtx.fillStyle = goldGrad;
-                        colorCtx.fillText(char, width / 2, yPos);
-
-                        // マスク用
-                        maskCtx.fillText(char, width / 2, yPos);
-                    });
                 }
             }
         }
@@ -1427,6 +1476,11 @@
 
                 if (shelfBooks.includes(clickedObject) && clickedObject.userData.isActive) {
                     if (activeBook === clickedObject) {
+                        // 外部リンク設定がある場合は、ポップアップブロックを回避するためクリックイベントスレッド内で即時 window.open
+                        const extUrl = EXTERNAL_LINKS[clickedObject.userData.url];
+                        if (extUrl) {
+                            window.open(extUrl, '_blank');
+                        }
                         triggerBookTransition(clickedObject);
                     } else {
                         if (activeBook) shrinkBook(activeBook);
@@ -1767,66 +1821,104 @@
                     </div>
                 `;
             } else if (url === 'survey') {
-                leftSide.innerHTML = `
-                    <h2 style="font-size: 1.6rem; color: #112233; margin-bottom: 20px; border-bottom: 2px solid rgba(17, 34, 51, 0.1); padding-bottom: 10px;">Questionnaire</h2>
-                    <p style="font-size: 0.95rem; line-height: 1.6; color: #5a544c; margin-bottom: 15px;">
-                        イベントに関するアンケートにご協力をお願いいたします。
-                    </p>
-                    <p style="font-size: 0.9rem; line-height: 1.6; color: #7a7368;">
-                        皆様からの貴重なフィードバックは、今後のサロンイベントの品質向上やアイデア共有の場の改善に役立てられます。
-                    </p>
-                `;
+                const extUrl = EXTERNAL_LINKS.survey;
+                if (extUrl) {
+                    leftSide.innerHTML = `
+                        <h2 style="font-size: 1.6rem; color: #112233; margin-bottom: 20px; border-bottom: 2px solid rgba(17, 34, 51, 0.1); padding-bottom: 10px;">Questionnaire</h2>
+                        <p style="font-size: 0.95rem; line-height: 1.6; color: #5a544c; margin-bottom: 15px;">
+                            アンケートページを別タブで開いています。
+                        </p>
+                        <p style="font-size: 0.9rem; line-height: 1.6; color: #7a7368;">
+                            ポップアップブロックなどで自動的に開かない場合は、右側のボタンをクリックしてアンケートを直接開いてください。
+                        </p>
+                    `;
 
-                rightSide.innerHTML = `
-                    <form onsubmit="event.preventDefault(); alert('アンケートが送信されました（デモ）');" style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem;">
-                        <div>
-                            <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #112233;">お名前</label>
-                            <input type="text" placeholder="筑波 太郎" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-family: inherit;">
+                    rightSide.innerHTML = `
+                        <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; gap: 15px; width: 100%;">
+                            <a href="${extUrl}" target="_blank" style="display: inline-block; background: #112233; color: #faf6ee; text-decoration: none; padding: 14px 28px; border-radius: 4px; font-weight: bold; font-family: inherit; font-size: 1.0rem; box-shadow: 0 4px 10px rgba(17, 34, 51, 0.2); transition: opacity 0.2s; text-align: center;">アンケートを開く</a>
                         </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #112233;">メールアドレス</label>
-                            <input type="email" placeholder="example@tsukuba.ac.jp" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-family: inherit;">
-                        </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #112233;">今回のイベントはいかがでしたか？</label>
-                            <select style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-family: inherit;">
-                                <option>大変満足</option>
-                                <option>満足</option>
-                                <option>普通</option>
-                                <option>改善の余地あり</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #112233;">ご意見・メッセージ</label>
-                            <textarea rows="3" placeholder="ご意見をご記入ください..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-family: inherit; resize: none;"></textarea>
-                        </div>
-                        <button type="submit" style="background: #112233; color: #faf6ee; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-family: inherit; transition: opacity 0.2s;">送信する</button>
-                    </form>
-                `;
+                    `;
+                } else {
+                    leftSide.innerHTML = `
+                        <h2 style="font-size: 1.6rem; color: #112233; margin-bottom: 20px; border-bottom: 2px solid rgba(17, 34, 51, 0.1); padding-bottom: 10px;">Questionnaire</h2>
+                        <p style="font-size: 0.95rem; line-height: 1.6; color: #5a544c; margin-bottom: 15px;">
+                            イベントに関するアンケートにご協力をお願いいたします。
+                        </p>
+                        <p style="font-size: 0.9rem; line-height: 1.6; color: #7a7368;">
+                            皆様からの貴重なフィードバックは、今後のサロンイベントの品質向上やアイデア共有の場の改善に役立てられます。
+                        </p>
+                    `;
+
+                    rightSide.innerHTML = `
+                        <form onsubmit="event.preventDefault(); alert('アンケートが送信されました（デモ）');" style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #112233;">お名前</label>
+                                <input type="text" placeholder="筑波 太郎" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-family: inherit;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #112233;">メールアドレス</label>
+                                <input type="email" placeholder="example@tsukuba.ac.jp" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-family: inherit;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #112233;">今回のイベントはいかがでしたか？</label>
+                                <select style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-family: inherit;">
+                                    <option>大変満足</option>
+                                    <option>満足</option>
+                                    <option>普通</option>
+                                    <option>改善の余地あり</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #112233;">ご意見・メッセージ</label>
+                                <textarea rows="3" placeholder="ご意見をご記入ください..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-family: inherit; resize: none;"></textarea>
+                            </div>
+                            <button type="submit" style="background: #112233; color: #faf6ee; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-family: inherit; transition: opacity 0.2s;">送信する</button>
+                        </form>
+                    `;
+                }
             } else if (url === 'comments') {
-                leftSide.innerHTML = `
-                    <h2 style="font-size: 1.6rem; color: #142d1f; margin-bottom: 20px; border-bottom: 2px solid rgba(20, 45, 31, 0.1); padding-bottom: 10px;">Comment Board</h2>
-                    <div id="comment-list-container" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; max-height: 380px; padding-right: 5px;">
-                        ${createCommentItem("ゲストA", "素晴らしいプレゼンテーションでした！刺激を受けました。", "10分前")}
-                        ${createCommentItem("筑波 花子", "本の3Dアニメーションが非常に美しくて驚きました！", "1時間前")}
-                        ${createCommentItem("大学院生", "TEDxの次のイベント日程を知りたいです。", "3時間前")}
-                    </div>
-                `;
+                const extUrl = EXTERNAL_LINKS.comments;
+                if (extUrl) {
+                    leftSide.innerHTML = `
+                        <h2 style="font-size: 1.6rem; color: #142d1f; margin-bottom: 20px; border-bottom: 2px solid rgba(20, 45, 31, 0.1); padding-bottom: 10px;">Comment/Screen</h2>
+                        <p style="font-size: 0.95rem; line-height: 1.6; color: #5a544c; margin-bottom: 15px;">
+                            Comment/Screen を別タブで開いています。
+                        </p>
+                        <p style="font-size: 0.9rem; line-height: 1.6; color: #7a7368;">
+                            ポップアップブロックなどで自動的に開かない場合は、右側のボタンをクリックして直接開いてください。
+                        </p>
+                    `;
 
-                rightSide.innerHTML = `
-                    <h3 style="font-size: 1.1rem; color: #142d1f; margin-bottom: 12px;">コメントを書き込む</h3>
-                    <form id="comment-submit-form" onsubmit="event.preventDefault(); handleAddComment();" style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem;">
-                        <div>
-                            <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #142d1f;">名前</label>
-                            <input type="text" id="comment-name-input" placeholder="ニックネーム" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-family: inherit;">
+                    rightSide.innerHTML = `
+                        <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; gap: 15px; width: 100%;">
+                            <a href="${extUrl}" target="_blank" style="display: inline-block; background: #142d1f; color: #faf6ee; text-decoration: none; padding: 14px 28px; border-radius: 4px; font-weight: bold; font-family: inherit; font-size: 1.0rem; box-shadow: 0 4px 10px rgba(20, 45, 31, 0.2); transition: opacity 0.2s; text-align: center;">Comment/Screen を開く</a>
                         </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #142d1f;">メッセージ</label>
-                            <textarea id="comment-text-input" rows="5" placeholder="コメント内容を入力してください..." required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-family: inherit; resize: none;"></textarea>
+                    `;
+                } else {
+                    leftSide.innerHTML = `
+                        <h2 style="font-size: 1.6rem; color: #142d1f; margin-bottom: 20px; border-bottom: 2px solid rgba(20, 45, 31, 0.1); padding-bottom: 10px;">Comment Board</h2>
+                        <div id="comment-list-container" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; max-height: 380px; padding-right: 5px;">
+                            \${createCommentItem("ゲストA", "素晴らしいプレゼンテーションでした！刺激を受けました。", "10分前")}
+                            \${createCommentItem("筑波 花子", "本の3Dアニメーションが非常に美しくて驚きました！", "1時間前")}
+                            \${createCommentItem("大学院生", "TEDxの次のイベント日程を知りたいです。", "3時間前")}
                         </div>
-                        <button type="submit" style="background: #142d1f; color: #faf6ee; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-family: inherit; transition: opacity 0.2s;">投稿する</button>
-                    </form>
-                `;
+                    `;
+
+                    rightSide.innerHTML = `
+                        <h3 style="font-size: 1.1rem; color: #142d1f; margin-bottom: 12px;">コメントを書き込む</h3>
+                        <form id="comment-submit-form" onsubmit="event.preventDefault(); handleAddComment();" style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #142d1f;">名前</label>
+                                <input type="text" id="comment-name-input" placeholder="ニックネーム" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-family: inherit;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #142d1f;">メッセージ</label>
+                                <textarea id="comment-text-input" rows="5" placeholder="コメント内容を入力してください..." required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-family: inherit; resize: none;"></textarea>
+                            </div>
+                            <button type="submit" style="background: #142d1f; color: #faf6ee; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-family: inherit; transition: opacity 0.2s;">投稿する</button>
+                        </form>
+                    `;
+                }
             } else if (url === 'socials') {
                 leftSide.innerHTML = `
                     <h2 style="font-size: 1.6rem; color: #4f3613; margin-bottom: 20px; border-bottom: 2px solid rgba(79, 54, 19, 0.1); padding-bottom: 10px;">Social Accounts</h2>
