@@ -476,7 +476,7 @@
         const BOOKS_DATA = [
             { title: "パートナー\nOur Partners", spineTitle: "Partners", color: "#4a121a", url: "partners", isActive: true },   // バーガンディレッド
             { title: "アンケート\nQuestionnaire", spineTitle: "Survey", color: "#112233", url: "survey", isActive: true },       // ロイヤルネイビー
-            { title: "Comment/Screen", spineTitle: "Comment/Screen", color: "#142d1f", url: "comments", isActive: true },      // フォレストグリーン
+            { title: "Comment\nScreen", spineTitle: "Comment Screen", color: "#142d1f", url: "comments", isActive: true },      // フォレストグリーン
             { title: "アカウント\nSocial Accounts", spineTitle: "Socials", color: "#4f3613", url: "socials", isActive: true }    // アンバーゴールド
         ];
 
@@ -1880,9 +1880,9 @@
                 const extUrl = EXTERNAL_LINKS.comments;
                 if (extUrl) {
                     leftSide.innerHTML = `
-                        <h2 style="font-size: 1.6rem; color: #142d1f; margin-bottom: 20px; border-bottom: 2px solid rgba(20, 45, 31, 0.1); padding-bottom: 10px;">Comment/Screen</h2>
+                        <h2 style="font-size: 1.6rem; color: #142d1f; margin-bottom: 20px; border-bottom: 2px solid rgba(20, 45, 31, 0.1); padding-bottom: 10px;">Comment Screen</h2>
                         <p style="font-size: 0.95rem; line-height: 1.6; color: #5a544c; margin-bottom: 15px;">
-                            Comment/Screen を別タブで開いています。
+                            Comment Screen を別タブで開いています。
                         </p>
                         <p style="font-size: 0.9rem; line-height: 1.6; color: #7a7368;">
                             ポップアップブロックなどで自動的に開かない場合は、右側のボタンをクリックして直接開いてください。
@@ -1891,7 +1891,7 @@
 
                     rightSide.innerHTML = `
                         <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; gap: 15px; width: 100%;">
-                            <a href="${extUrl}" target="_blank" style="display: inline-block; background: #142d1f; color: #faf6ee; text-decoration: none; padding: 14px 28px; border-radius: 4px; font-weight: bold; font-family: inherit; font-size: 1.0rem; box-shadow: 0 4px 10px rgba(20, 45, 31, 0.2); transition: opacity 0.2s; text-align: center;">Comment/Screen を開く</a>
+                            <a href="${extUrl}" target="_blank" style="display: inline-block; background: #142d1f; color: #faf6ee; text-decoration: none; padding: 14px 28px; border-radius: 4px; font-weight: bold; font-family: inherit; font-size: 1.0rem; box-shadow: 0 4px 10px rgba(20, 45, 31, 0.2); transition: opacity 0.2s; text-align: center;">Comment Screen を開く</a>
                         </div>
                     `;
                 } else {
