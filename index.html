@@ -1476,11 +1476,6 @@
 
                 if (shelfBooks.includes(clickedObject) && clickedObject.userData.isActive) {
                     if (activeBook === clickedObject) {
-                        // 外部リンク設定がある場合は、ポップアップブロックを回避するためクリックイベントスレッド内で即時 window.open
-                        const extUrl = EXTERNAL_LINKS[clickedObject.userData.url];
-                        if (extUrl) {
-                            window.open(extUrl, '_blank');
-                        }
                         triggerBookTransition(clickedObject);
                     } else {
                         if (activeBook) shrinkBook(activeBook);
@@ -1515,52 +1510,47 @@
                 duration: 0.5
             });
 
-            // 他の本を奥に引かせてフェードアウト
+            // 他の本を奥に引かせて退避（透過はさせず、位置移動のみで本棚の奥へ隠すことでWebGLの透過描画バグを防止）
             shelfBooks.forEach((book) => {
                 if (book !== targetBook) {
                     gsap.to(book.position, {
-                        z: -1.2,
-                        y: -0.4,
+                        z: -1.5,
+                        y: -0.6,
                         duration: 0.8,
                         ease: "power2.inOut"
-                    });
-                    book.traverse((child) => {
-                        if (child.material) {
-                            gsap.to(child.material, {
-                                opacity: 0.1,
-                                transparent: true,
-                                duration: 0.8
-                            });
-                        }
                     });
                 }
             });
 
             // HTMLオーバーレイと完全に重なるよう、カメラと本のZ座標パラメータを微調整
             const aspect = window.innerWidth / window.innerHeight;
-            const targetZ = aspect < 1.0 ? 1.4 : 2.2;
-            const cameraTargetZ = aspect < 1.0 ? 3.9 : 3.8; // 見かけの距離 (PC 1.6, スマホ 2.5) で同期
+            const targetZ = aspect < 1.0 ? 1.0 : 1.5;
+            const cameraTargetZ = aspect < 1.0 ? 5.2 + (1.0 - aspect) * 2.2 : 4.5; // 初期本棚カメラ位置と完全同期し、前後のガチャガチャした動きを抑制
 
             // 先に見開きコンテンツを挿入しておく (フェードイン時にすぐ表示されるようにする)
             setupBookContent(targetBook.userData.url);
 
             const clickTl = gsap.timeline({
                 onComplete: () => {
+                    // 完全に本が開ききったタイミングで外部URLがあれば別タブで遷移する (ポップアップブロック時には画面のボタンから再試行可能)
+                    const extUrl = EXTERNAL_LINKS[targetBook.userData.url];
+                    if (extUrl) {
+                        window.open(extUrl, '_blank');
+                    }
                     isTransitioning = false;
                 }
             });
 
             // 1. 本を本棚から真っ直ぐ手前に引き抜く (X, Y, 回転はそのまま、Z軸のみ手前へスライドして隣の本との重なりを防止)
             clickTl.to(targetBook.position, {
-                z: 1.5,
+                z: 1.2,
                 duration: 0.4,
                 ease: "power2.inOut"
             });
 
-            // カメラも引き抜きに合わせて少し手前に接近を開始
+            // カメラはY軸の上下動を完全に廃止し、Z軸も極力静止（初期位置に維持）
             clickTl.to(camera.position, {
-                z: cameraTargetZ + 1.0,
-                y: 0,
+                z: cameraTargetZ,
                 duration: 0.4,
                 ease: "power2.inOut"
             }, "<");
@@ -1582,21 +1572,14 @@
                 ease: "power2.out"
             }, "<");
 
-            // 2. 表紙を開き切る (180度全開)。同時に、カメラを最終接近位置 (cameraTargetZ) まで一気に近づける！
-            // これにより、本が開きながらページがカメラに向かってくる（ズームインする）演出を実現。
+            // 3. 表紙を開き切る (180度全開)
             clickTl.to(targetBook.userData.hinge.rotation, {
                 y: -Math.PI * 0.95,
-                duration: 1.2,
+                duration: 1.0,
                 ease: "power2.inOut"
             });
 
-            clickTl.to(camera.position, {
-                z: cameraTargetZ,
-                duration: 1.2,
-                ease: "power2.inOut"
-            }, "<");
-
-            // 3. 本の内側から光が漏れる演出
+            // 4. 本の内側から光が漏れる演出
             const bookGlow = new THREE.PointLight('#ffffff', 0, 10);
             bookGlow.position.set(0, 0, 0.1);
             targetBook.add(bookGlow);
@@ -1607,7 +1590,7 @@
                 duration: 0.8
             }, "-=0.8");
 
-            // 4. カメラの接近に合わせて、HTMLコンテンツ（白背景）を滑らかにフェードイン！
+            // 5. カメラの接近に合わせて、HTMLコンテンツ（白背景）を滑らかにフェードイン！
             clickTl.to(["#content-overlay", "#close-button"], {
                 opacity: 1,
                 duration: 0.7,
@@ -1712,7 +1695,7 @@
                 ease: "power2.inOut"
             });
 
-            // 4. 退避していた他の本を元の位置と不透明度に戻す
+            // 4. 退避していた他の本を元の位置に戻す
             shelfBooks.forEach((book) => {
                 if (book !== activeBook) {
                     gsap.to(book.position, {
@@ -1720,15 +1703,6 @@
                         y: -0.28,
                         duration: 0.8,
                         ease: "power2.inOut"
-                    });
-                    book.traverse((child) => {
-                        if (child.material) {
-                            gsap.to(child.material, {
-                                opacity: 1.0,
-                                transparent: false,
-                                duration: 0.8
-                            });
-                        }
                     });
                 }
             });
