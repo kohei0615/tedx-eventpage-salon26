@@ -1550,12 +1550,27 @@
                 }
             });
 
-            // 1. 本を画面中央へ引き出す (正面に向ける)。カメラは最初、少し離れた手前まで近づく。
+            // 1. 本を本棚から真っ直ぐ手前に引き抜く (X, Y, 回転はそのまま、Z軸のみ手前へスライドして隣の本との重なりを防止)
+            clickTl.to(targetBook.position, {
+                z: 1.5,
+                duration: 0.4,
+                ease: "power2.inOut"
+            });
+
+            // カメラも引き抜きに合わせて少し手前に接近を開始
+            clickTl.to(camera.position, {
+                z: cameraTargetZ + 1.0,
+                y: 0,
+                duration: 0.4,
+                ease: "power2.inOut"
+            }, "<");
+
+            // 2. 本を画面中央へ移動させつつ、正面に向ける (Y軸の回転を0にして正面に向ける)
             clickTl.to(targetBook.position, {
                 x: 0,
                 y: 0,
                 z: targetZ,
-                duration: 1.0,
+                duration: 0.5,
                 ease: "power2.out"
             });
 
@@ -1563,15 +1578,7 @@
                 x: 0.1,
                 y: 0, // 表紙を正面に向ける
                 z: 0,
-                duration: 1.0,
-                ease: "power2.out"
-            }, "<");
-
-            // カメラの初期接近 (最終接近目標より1.0ユニット手前)
-            clickTl.to(camera.position, {
-                z: cameraTargetZ + 1.0,
-                y: 0,
-                duration: 1.0,
+                duration: 0.5,
                 ease: "power2.out"
             }, "<");
 
@@ -1668,23 +1675,24 @@
             const startX = - (SHELF_LAYOUT.length - 1) * spacing / 2;
             const originalX = startX + index * spacing;
 
+            // 2. 本を元のXスロットの上空（Z=1.5）にスライド移動させつつ、背表紙を手前に戻す
             closeTl.to(activeBook.position, {
                 x: originalX,
                 y: -0.28,
-                z: 0,
-                duration: 1.0,
-                ease: "power3.inOut"
+                z: 1.5,
+                duration: 0.6,
+                ease: "power2.inOut"
             }, "-=0.4");
 
             closeTl.to(activeBook.rotation, {
                 x: 0,
                 y: Math.PI / 2, // 背表紙を手前に戻す
                 z: 0,
-                duration: 1.0,
-                ease: "power3.inOut"
+                duration: 0.6,
+                ease: "power2.inOut"
             }, "<");
 
-            // 3. カメラを元に戻す (アスペクト比対応の引き位置)
+            // カメラを元に戻す (アスペクト比対応の引き位置)
             const aspect = window.innerWidth / window.innerHeight;
             const cameraTargetZ = aspect < 1.0 ? 5.2 + (1.0 - aspect) * 2.2 : 4.5;
             const cameraTargetY = aspect < 1.0 ? 0.5 : 0.25;
@@ -1693,9 +1701,16 @@
                 x: 0,
                 y: cameraTargetY,
                 z: cameraTargetZ,
-                duration: 1.0,
-                ease: "power3.inOut"
+                duration: 0.6,
+                ease: "power2.inOut"
             }, "<");
+
+            // 3. 本を元の本棚のスロットに真っ直ぐ押し戻す（Z=1.5 から Z=0）
+            closeTl.to(activeBook.position, {
+                z: 0,
+                duration: 0.4,
+                ease: "power2.inOut"
+            });
 
             // 4. 退避していた他の本を元の位置と不透明度に戻す
             shelfBooks.forEach((book) => {
